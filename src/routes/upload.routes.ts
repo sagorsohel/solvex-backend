@@ -27,7 +27,7 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter to allow only image files
+// File filter to allow image files and PDFs
 const fileFilter = (
   _req: Request,
   file: Express.Multer.File,
@@ -40,12 +40,14 @@ const fileFilter = (
     "image/gif",
     "image/svg+xml",
     "image/avif",
+    "application/pdf",
   ];
 
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedMimeTypes.includes(file.mimetype) || ext === ".pdf") {
     cb(null, true);
   } else {
-    cb(new Error("Only image files (JPEG, PNG, WebP, GIF, SVG, AVIF) are allowed!"));
+    cb(new Error("Only image files (JPEG, PNG, WebP, GIF, SVG, AVIF) and PDF documents are allowed!"));
   }
 };
 
@@ -53,15 +55,16 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 15 * 1024 * 1024, // 15MB limit
+    fileSize: 100 * 1024 * 1024, // 100MB limit for high-res PDF datasheets and assets
   },
 });
 
-// Accept single file from 'file' or 'image' field
+// Accept single file from 'file', 'image', or 'pdf' field
 const uploadSingle = (req: Request, res: Response, next: any) => {
   const handler = upload.fields([
     { name: "file", maxCount: 1 },
     { name: "image", maxCount: 1 },
+    { name: "pdf", maxCount: 1 },
   ]);
 
   handler(req, res, (err: any) => {
@@ -69,7 +72,7 @@ const uploadSingle = (req: Request, res: Response, next: any) => {
       if (err.code === "LIMIT_FILE_SIZE") {
         return res.status(400).json({
           success: false,
-          message: "File size exceeds 15MB limit.",
+          message: "File size exceeds 100MB limit.",
         });
       }
       return res.status(400).json({ success: false, message: err.message });

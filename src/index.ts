@@ -23,6 +23,7 @@ import {
   productModelsRouter,
 } from "./routes/products-settings.routes.js";
 import { testDbConnection, pool } from "./db/index.js";
+import { ensureProductsColumns } from "./controllers/product.controller.js";
 import path from "path";
 
 dotenv.config();
@@ -95,6 +96,7 @@ const server = app.listen(PORT, async () => {
   console.log(`🚀 Solvex Backend running at http://localhost:${PORT}`);
   console.log(`📦 Health Check: http://localhost:${PORT}/api/health`);
   await testDbConnection();
+  await ensureProductsColumns();
 });
 
 // Graceful shutdown on reload/termination
