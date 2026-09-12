@@ -1,0 +1,59 @@
+import express from "express";
+import cors from "cors";
+import * as dotenv from "dotenv";
+import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/user.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import productRoutes from "./routes/product.routes.js";
+import { testDbConnection } from "./db/index.js";
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+app.use(express.json());
+
+// Health & Info Endpoint
+app.get("/api/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    service: "Solvex Backend API",
+    orm: "Drizzle ORM (MySQL)",
+    auth: "JWT Authentication",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/products", productRoutes);
+
+// 404 Handler
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: "API endpoint not found" });
+});
+
+// Error handling middleware
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("Unhandled API Error:", err);
+  res.status(500).json({ success: false, message: "Internal server error", error: err?.message });
+});
+
+app.listen(PORT, async () => {
+  console.log(`🚀 Solvex Backend running at http://localhost:${PORT}`);
+  console.log(`📦 Health Check: http://localhost:${PORT}/api/health`);
+  await testDbConnection();
+});
+
+export default app;
