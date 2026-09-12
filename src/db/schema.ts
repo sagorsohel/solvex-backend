@@ -89,6 +89,23 @@ export const aboutPageSettings = mysqlTable("about_page_settings", {
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 
+// Full Homepage CMS Settings
+export const homepageSettings = mysqlTable("homepage_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  sliderSection: json("slider_section").$type<any>(),
+  serviceCards: json("service_cards").$type<any>(),
+  runningText: json("running_text").$type<any>(),
+  aboutSection: json("about_section").$type<any>(),
+  counterSection: json("counter_section").$type<any>(),
+  whyChooseUsSection: json("why_choose_us_section").$type<any>(),
+  workingProcessSection: json("working_process_section").$type<any>(),
+  solutionsSection: json("solutions_section").$type<any>(),
+  faqSection: json("faq_section").$type<any>(),
+  testimonialSection: json("testimonial_section").$type<any>(),
+  sectionVisibility: json("section_visibility").$type<any>(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
 // Services Catalog with dynamic architecture cards
 export const services = mysqlTable("services", {
   id: int("id").primaryKey().autoincrement(),

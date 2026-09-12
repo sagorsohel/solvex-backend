@@ -22,6 +22,7 @@ import {
   productBrandsRouter,
   productModelsRouter,
 } from "./routes/products-settings.routes.js";
+import homepageRoutes from "./routes/homepage.routes.js";
 import { testDbConnection, pool } from "./db/index.js";
 import { ensureProductsColumns } from "./controllers/product.controller.js";
 import path from "path";
@@ -62,6 +63,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/homepage", homepageRoutes);
 app.use("/api/about-page", aboutRoutes);
 app.use("/api/about-us", aboutRoutes);
 app.use("/api/board-members", boardRoutes);
