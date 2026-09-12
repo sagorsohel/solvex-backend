@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text, decimal, mysqlEnum, timestamp } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, varchar, text, decimal, mysqlEnum, timestamp, boolean, json } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
@@ -46,11 +46,39 @@ export const activityLogs = mysqlTable("activity_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Dedicated Board of Members Collection
+export const boardMembers = mysqlTable("board_members", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 191 }).notNull(),
+  designation: varchar("designation", { length: 191 }).notNull(),
+  tag: varchar("tag", { length: 100 }),
+  image: varchar("image", { length: 500 }),
+  bio: text("bio"),
+  displayInWebsite: boolean("display_in_website").default(true).notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// Full About Page Customization Settings
+export const aboutPageSettings = mysqlTable("about_page_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  discoverSection: json("discover_section").$type<any>(),
+  chairmanMessageSection: json("chairman_message_section").$type<any>(),
+  boardOfDirectorsSection: json("board_of_directors_section").$type<any>(),
+  ourStorySection: json("our_story_section").$type<any>(),
+  directionPurposeSection: json("direction_purpose_section").$type<any>(),
+  strategicPillarsSection: json("strategic_pillars_section").$type<any>(),
+  peopleValuesSection: json("people_values_section").$type<any>(),
+  efficiencyCertificatesSection: json("efficiency_certificates_section").$type<any>(),
+  carbonFreeFutureSection: json("carbon_free_future_section").$type<any>(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
 export type Product = typeof products.$inferSelect;
-export type NewProduct = typeof products.$inferInsert;
 export type Inquiry = typeof inquiries.$inferSelect;
-export type NewInquiry = typeof inquiries.$inferInsert;
 export type ActivityLog = typeof activityLogs.$inferSelect;
-export type NewActivityLog = typeof activityLogs.$inferInsert;
+export type BoardMember = typeof boardMembers.$inferSelect;
+export type NewBoardMember = typeof boardMembers.$inferInsert;
+export type AboutPageSetting = typeof aboutPageSettings.$inferSelect;

@@ -5,7 +5,9 @@ import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import productRoutes from "./routes/product.routes.js";
-import { testDbConnection } from "./db/index.js";
+import aboutRoutes from "./routes/about.routes.js";
+import boardRoutes from "./routes/board.routes.js";
+import { testDbConnection, pool } from "./db/index.js";
 
 dotenv.config();
 
@@ -20,7 +22,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 // Health & Info Endpoint
 app.get("/api/health", (_req, res) => {
@@ -38,6 +40,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/about-page", aboutRoutes);
+app.use("/api/about-us", aboutRoutes);
+app.use("/api/board-members", boardRoutes);
+app.use("/api/board-of-directors", boardRoutes);
 
 // 404 Handler
 app.use((_req, res) => {
@@ -50,10 +56,24 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(500).json({ success: false, message: "Internal server error", error: err?.message });
 });
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 Solvex Backend running at http://localhost:${PORT}`);
   console.log(`📦 Health Check: http://localhost:${PORT}/api/health`);
   await testDbConnection();
 });
+
+// Graceful shutdown on reload/termination
+const shutdown = async () => {
+  server.close(() => {
+    console.log("🛑 HTTP server closed.");
+    pool.end().then(() => {
+      console.log("🛑 MySQL connection pool closed.");
+      process.exit(0);
+    });
+  });
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
 
 export default app;
