@@ -12,14 +12,15 @@ import { verifyToken, requireRole } from "../middleware/auth.js";
 
 const router = Router();
 
-router.use(verifyToken);
-
-router.get("/inquiries/all", getInquiries);
-router.get("/next-sku", getNextSku);
+// Public endpoints (Website & Catalog)
 router.get("/", getProducts);
+router.get("/next-sku", verifyToken, getNextSku);
+router.get("/inquiries/all", verifyToken, getInquiries);
 router.get("/:id", getProductById);
-router.post("/", requireRole(["admin", "editor"]), createProduct);
-router.put("/:id", requireRole(["admin", "editor"]), updateProduct);
-router.delete("/:id", requireRole(["admin"]), deleteProduct);
+
+// Admin-only mutation endpoints
+router.post("/", verifyToken, requireRole(["admin", "editor"]), createProduct);
+router.put("/:id", verifyToken, requireRole(["admin", "editor"]), updateProduct);
+router.delete("/:id", verifyToken, requireRole(["admin"]), deleteProduct);
 
 export default router;
