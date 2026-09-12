@@ -7,7 +7,9 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import aboutRoutes from "./routes/about.routes.js";
 import boardRoutes from "./routes/board.routes.js";
+import uploadRoutes from "./routes/upload.routes.js";
 import { testDbConnection, pool } from "./db/index.js";
+import path from "path";
 
 dotenv.config();
 
@@ -23,6 +25,10 @@ app.use(
   })
 );
 app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Static uploads directory
+app.use("/uploads", express.static(path.resolve("uploads")));
 
 // Health & Info Endpoint
 app.get("/api/health", (_req, res) => {
@@ -37,6 +43,7 @@ app.get("/api/health", (_req, res) => {
 
 // API Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/upload", uploadRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/products", productRoutes);

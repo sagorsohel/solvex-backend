@@ -48,6 +48,30 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
   }
 };
 
+export const updateProduct = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { title, category, price, stock, status, description, image } = req.body;
+
+    await db
+      .update(products)
+      .set({
+        ...(title && { title }),
+        ...(category && { category }),
+        ...(price !== undefined && { price: price.toString() }),
+        ...(stock !== undefined && { stock: Number(stock) }),
+        ...(status && { status }),
+        ...(description !== undefined && { description }),
+        ...(image !== undefined && { image }),
+      })
+      .where(eq(products.id, Number(id)));
+
+    res.json({ success: true, message: "Product updated successfully." });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: "Failed to update product", error: error.message });
+  }
+};
+
 export const deleteProduct = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
