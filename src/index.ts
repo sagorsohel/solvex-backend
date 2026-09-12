@@ -9,6 +9,11 @@ import aboutRoutes from "./routes/about.routes.js";
 import boardRoutes from "./routes/board.routes.js";
 import uploadRoutes from "./routes/upload.routes.js";
 import { servicesRouter, servicesPageRouter } from "./routes/service.routes.js";
+import {
+  projectsRouter,
+  projectCategoriesRouter,
+  projectsPageRouter,
+} from "./routes/project.routes.js";
 import { testDbConnection, pool } from "./db/index.js";
 import path from "path";
 
@@ -54,6 +59,9 @@ app.use("/api/board-members", boardRoutes);
 app.use("/api/board-of-directors", boardRoutes);
 app.use("/api/services", servicesRouter);
 app.use("/api/services-page", servicesPageRouter);
+app.use("/api/projects", projectsRouter);
+app.use("/api/project-categories", projectCategoriesRouter);
+app.use("/api/projects-page", projectsPageRouter);
 
 // 404 Handler
 app.use((_req, res) => {

@@ -125,6 +125,54 @@ export const servicesPageSettings = mysqlTable("services_page_settings", {
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 
+// Project Categories
+export const projectCategories = mysqlTable("project_categories", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 191 }).notNull(),
+  status: boolean("status").default(true).notNull(),
+  showInWebsite: boolean("show_in_website").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// Projects / Portfolio Archive
+export const projects = mysqlTable("projects", {
+  id: int("id").primaryKey().autoincrement(),
+  slug: varchar("slug", { length: 191 }).unique(),
+  projectCategoryId: int("project_category_id"),
+  label: varchar("label", { length: 191 }),
+  bigTitle: varchar("big_title", { length: 255 }).notNull(),
+  descriptionCards: json("description_cards").$type<Array<{ title: string; subtitle: string }>>(),
+  detailsCard: json("details_card").$type<Array<{
+    image?: string | null;
+    label?: string | null;
+    label_color?: string | null;
+    title?: string | null;
+    description_1?: string | null;
+    description_2?: string | null;
+    bullet_points?: Array<{ icon?: string | null; icon_color?: string | null; text: string }>;
+    image_left?: boolean;
+  }>>(),
+  faqIcon: varchar("faq_icon", { length: 100 }),
+  faqTitle: varchar("faq_title", { length: 191 }),
+  faqDescription: text("faq_description"),
+  faqQuestions: json("faq_questions").$type<Array<{ question: string; answer: string }>>(),
+  status: mysqlEnum("status", ["published", "draft"]).default("published").notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// Projects Archive Page Hero Header CMS
+export const projectsPageSettings = mysqlTable("projects_page_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  badge: varchar("badge", { length: 191 }),
+  title: varchar("title", { length: 191 }),
+  titleHighlight: varchar("title_highlight", { length: 191 }),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Inquiry = typeof inquiries.$inferSelect;
@@ -135,4 +183,8 @@ export type AboutPageSetting = typeof aboutPageSettings.$inferSelect;
 export type Service = typeof services.$inferSelect;
 export type NewService = typeof services.$inferInsert;
 export type ServicesPageSetting = typeof servicesPageSettings.$inferSelect;
+export type ProjectCategory = typeof projectCategories.$inferSelect;
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+export type ProjectsPageSetting = typeof projectsPageSettings.$inferSelect;
 
