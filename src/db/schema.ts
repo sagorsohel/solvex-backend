@@ -188,3 +188,106 @@ export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type ProjectsPageSetting = typeof projectsPageSettings.$inferSelect;
 
+// 1. Sister Concerns (Subsidiaries / Divisions)
+export const sisterConcerns = mysqlTable("sister_concerns", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 191 }).notNull(),
+  code: varchar("50", { length: 50 }),
+  description: text("description"),
+  logo: varchar("logo", { length: 500 }),
+  website: varchar("website", { length: 255 }),
+  status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// 2. Product Categories (Linked to Sister Concern)
+export const productCategories = mysqlTable("product_categories", {
+  id: int("id").primaryKey().autoincrement(),
+  sisterConcernId: int("sister_concern_id").notNull(),
+  name: varchar("name", { length: 191 }).notNull(),
+  slug: varchar("slug", { length: 191 }),
+  description: text("description"),
+  image: varchar("image", { length: 500 }),
+  status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// 3. Product Sub Categories (Linked to Product Category)
+export const productSubCategories = mysqlTable("product_sub_categories", {
+  id: int("id").primaryKey().autoincrement(),
+  productCategoryId: int("product_category_id").notNull(),
+  name: varchar("name", { length: 191 }).notNull(),
+  slug: varchar("slug", { length: 191 }),
+  description: text("description"),
+  image: varchar("image", { length: 500 }),
+  status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// 4. Product Tree Categories (Level-3 granular categories linked to Sub Category)
+export const productTreeCategories = mysqlTable("product_tree_categories", {
+  id: int("id").primaryKey().autoincrement(),
+  productSubCategoryId: int("product_sub_category_id").notNull(),
+  name: varchar("name", { length: 191 }).notNull(),
+  slug: varchar("slug", { length: 191 }),
+  description: text("description"),
+  status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// 5. Product Brands (Individual entity)
+export const productBrands = mysqlTable("product_brands", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 191 }).notNull(),
+  slug: varchar("slug", { length: 191 }),
+  logo: varchar("logo", { length: 500 }),
+  originCountry: varchar("origin_country", { length: 100 }),
+  website: varchar("website", { length: 255 }),
+  description: text("description"),
+  status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// 6. Product Models (Linked to Brand)
+export const productModels = mysqlTable("product_models", {
+  id: int("id").primaryKey().autoincrement(),
+  brandId: int("brand_id").notNull(),
+  name: varchar("name", { length: 191 }).notNull(),
+  modelNumber: varchar("model_number", { length: 191 }),
+  specifications: text("specifications"),
+  description: text("description"),
+  status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SisterConcern = typeof sisterConcerns.$inferSelect;
+export type NewSisterConcern = typeof sisterConcerns.$inferInsert;
+
+export type ProductCategory = typeof productCategories.$inferSelect;
+export type NewProductCategory = typeof productCategories.$inferInsert;
+
+export type ProductSubCategory = typeof productSubCategories.$inferSelect;
+export type NewProductSubCategory = typeof productSubCategories.$inferInsert;
+
+export type ProductTreeCategory = typeof productTreeCategories.$inferSelect;
+export type NewProductTreeCategory = typeof productTreeCategories.$inferInsert;
+
+export type ProductBrand = typeof productBrands.$inferSelect;
+export type NewProductBrand = typeof productBrands.$inferInsert;
+
+export type ProductModel = typeof productModels.$inferSelect;
+export type NewProductModel = typeof productModels.$inferInsert;
+
+

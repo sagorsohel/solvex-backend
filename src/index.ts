@@ -14,6 +14,14 @@ import {
   projectCategoriesRouter,
   projectsPageRouter,
 } from "./routes/project.routes.js";
+import {
+  sisterConcernsRouter,
+  productCategoriesRouter,
+  productSubCategoriesRouter,
+  productTreeCategoriesRouter,
+  productBrandsRouter,
+  productModelsRouter,
+} from "./routes/products-settings.routes.js";
 import { testDbConnection, pool } from "./db/index.js";
 import path from "path";
 
@@ -62,6 +70,15 @@ app.use("/api/services-page", servicesPageRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/project-categories", projectCategoriesRouter);
 app.use("/api/projects-page", projectsPageRouter);
+
+// Products Settings & Sister Concerns Hierarchy Routes
+app.use("/api/sister-concerns", sisterConcernsRouter);
+app.use("/api/product-categories", productCategoriesRouter);
+app.use("/api/product-sub-categories", productSubCategoriesRouter);
+app.use("/api/product-tree-categories", productTreeCategoriesRouter);
+app.use("/api/product-brands", productBrandsRouter);
+app.use("/api/product-models", productModelsRouter);
+
 
 // 404 Handler
 app.use((_req, res) => {
