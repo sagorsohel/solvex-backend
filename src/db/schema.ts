@@ -75,6 +75,56 @@ export const aboutPageSettings = mysqlTable("about_page_settings", {
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 
+// Services Catalog with dynamic architecture cards
+export const services = mysqlTable("services", {
+  id: int("id").primaryKey().autoincrement(),
+  slug: varchar("slug", { length: 191 }).notNull().unique(),
+  title: varchar("title", { length: 191 }).notNull(),
+  shortDescription: text("short_description"),
+  tags: json("tags").$type<string[]>(),
+  heroImage: varchar("hero_image", { length: 500 }),
+  cards: json("cards").$type<Array<{
+    id?: string;
+    phase_tag?: string;
+    title: string;
+    description?: string;
+    bullet_points?: string[];
+    image?: string;
+  }>>(),
+  hardwareCard: json("hardware_card").$type<{
+    title?: string;
+    description?: string;
+    button_text?: string;
+    button_color?: string;
+    card_color?: string;
+  }>(),
+  consultationCard: json("consultation_card").$type<{
+    title?: string;
+    description?: string;
+    button_text?: string;
+    button_color?: string;
+    card_color?: string;
+  }>(),
+  faqs: json("faqs").$type<Array<{ question: string; answer: string }>>(),
+  status: mysqlEnum("status", ["published", "draft"]).default("published").notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// Services Page CMS (Hero section, section header)
+export const servicesPageSettings = mysqlTable("services_page_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  heroSmallTitle: varchar("hero_small_title", { length: 191 }),
+  heroTitle: varchar("hero_title", { length: 191 }),
+  heroTitleStyle: varchar("hero_title_style", { length: 191 }),
+  heroDescription: text("hero_description"),
+  highlights: json("highlights").$type<string[]>(),
+  sectionTitle: varchar("section_title", { length: 191 }),
+  sectionSubtitle: text("section_subtitle"),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Inquiry = typeof inquiries.$inferSelect;
@@ -82,3 +132,7 @@ export type ActivityLog = typeof activityLogs.$inferSelect;
 export type BoardMember = typeof boardMembers.$inferSelect;
 export type NewBoardMember = typeof boardMembers.$inferInsert;
 export type AboutPageSetting = typeof aboutPageSettings.$inferSelect;
+export type Service = typeof services.$inferSelect;
+export type NewService = typeof services.$inferInsert;
+export type ServicesPageSetting = typeof servicesPageSettings.$inferSelect;
+
