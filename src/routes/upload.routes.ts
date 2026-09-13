@@ -118,10 +118,45 @@ const uploadSingle = (req: Request, res: Response, next: any) => {
 };
 
 /**
+ * Forward uploaded image to standalone microservice at https://image.solvexgloballtd.com
+ */
+const uploadToImageStorage = async (
+  filePath: string,
+  originalName: string,
+  mimetype: string
+): Promise<{ success: boolean; url?: string; filename?: string; error?: string }> => {
+  const serviceUrl = (process.env.IMAGE_STORAGE_URL || "https://image.solvexgloballtd.com").replace(/\/+$/, "");
+  const apiKey = process.env.IMAGE_STORAGE_API_KEY || "solvex_img_sec_9f82a1c4e7b309d5a8e2b1c6f4d0a3e8";
+
+  try {
+    const fileBuffer = fs.readFileSync(filePath);
+    const blob = new Blob([fileBuffer], { type: mimetype || "image/jpeg" });
+    const formData = new FormData();
+    formData.append("image", blob, originalName);
+
+    const response = await fetch(`${serviceUrl}/api/upload`, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+      },
+      body: formData,
+    });
+
+    const data: any = await response.json();
+    if (response.ok && data?.success && data?.url) {
+      return { success: true, url: data.url, filename: data.filename };
+    }
+    return { success: false, error: data?.error || `Upload failed with status ${response.status}` };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to connect to image storage service" };
+  }
+};
+
+/**
  * POST /api/upload
  * Upload a single image or PDF document.
- * Automatically uploads to Cloudinary if configured in .env,
- * otherwise saves to persistent disk storage (UPLOADS_DIR).
+ * Automatically uploads to Solvex Image Storage (https://image.solvexgloballtd.com),
+ * or Cloudinary if configured in .env, otherwise saves to persistent disk storage (UPLOADS_DIR).
  */
 router.post("/", uploadSingle, async (req: Request, res: Response) => {
   const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
@@ -132,6 +167,42 @@ router.post("/", uploadSingle, async (req: Request, res: Response) => {
       success: false,
       message: "No file provided in 'file', 'image', or 'pdf' form field.",
     });
+  }
+
+  const isPdf = uploadedFile.mimetype === "application/pdf" || uploadedFile.originalname.endsWith(".pdf");
+
+  // 1. Upload images to dedicated Solvex Image Storage microservice (https://image.solvexgloballtd.com)
+  if (!isPdf) {
+    try {
+      const storageResult = await uploadToImageStorage(
+        uploadedFile.path,
+        uploadedFile.originalname,
+        uploadedFile.mimetype
+      );
+
+      if (storageResult.success && storageResult.url) {
+        // Remove local temporary file after successful cloud upload
+        try {
+          fs.unlinkSync(uploadedFile.path);
+        } catch (_) {}
+
+        return res.status(201).json({
+          success: true,
+          message: "File uploaded successfully to permanent Solvex Image Storage",
+          url: storageResult.url,
+          relativeUrl: storageResult.url,
+          filename: storageResult.filename,
+          originalName: uploadedFile.originalname,
+          mimetype: "image/webp",
+          size: uploadedFile.size,
+          provider: "image-storage",
+        });
+      } else {
+        console.warn("Image storage upload failed, falling back to local/Cloudinary storage:", storageResult.error);
+      }
+    } catch (imgStorageErr: any) {
+      console.error("Image storage exception, falling back:", imgStorageErr?.message);
+    }
   }
 
   // 1. If Cloudinary is enabled, upload to Cloudinary for 100% permanent cloud hosting
