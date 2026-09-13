@@ -2,16 +2,19 @@
   "name": "solvex-backend",
   "version": "1.0.0",
   "description": "Express.js backend with JWT, Drizzle ORM, and MySQL",
-  "main": "dist/index.js",
+  "main": "server.js",
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node server.js",
+    "hostinger": "node server.js",
+    "db:export": "tsx src/scripts/export-db.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "package:deploy": "node scripts/package-deploy.js"
   },
   "keywords": [
     "express",

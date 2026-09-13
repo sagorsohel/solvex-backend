@@ -1,0 +1,21 @@
+# Hostinger LiteSpeed / Apache Reverse Proxy Configuration
+# If your Hostinger plan uses Apache/LiteSpeed with Node.js running on a port (e.g. 5000),
+# this file proxies incoming HTTP/HTTPS traffic to the Node.js process.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  
+  # Allow direct access to uploaded files if served by web server
+  RewriteRule ^uploads/(.*)$ uploads/$1 [L]
+
+  # Proxy all other requests to Node.js backend on port 5000
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+  Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+</IfModule>

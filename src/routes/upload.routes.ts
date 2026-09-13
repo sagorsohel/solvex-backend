@@ -98,11 +98,14 @@ router.post("/", uploadSingle, (req: Request, res: Response) => {
     });
   }
 
-  // Construct full public URL
+  // Construct full public URL (supports custom domain via APP_URL / BASE_URL)
+  const configuredBaseUrl = process.env.APP_URL || process.env.BASE_URL;
   const protocol = req.protocol;
   const host = req.get("host") || `localhost:${process.env.PORT || 5000}`;
   const relativeUrl = `/uploads/${uploadedFile.filename}`;
-  const fullUrl = `${protocol}://${host}${relativeUrl}`;
+  const fullUrl = configuredBaseUrl
+    ? `${configuredBaseUrl.replace(/\/+$/, "")}${relativeUrl}`
+    : `${protocol}://${host}${relativeUrl}`;
 
   return res.status(201).json({
     success: true,

@@ -32,16 +32,26 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Enable reverse proxy trust (Required for Hostinger / Nginx / Cloudflare SSL)
+app.set("trust proxy", 1);
+
+// CORS configuration (Accepts * or comma-separated domains from CORS_ORIGIN)
+const corsOrigin = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.includes(",")
+    ? process.env.CORS_ORIGIN.split(",").map((item) => item.trim())
+    : process.env.CORS_ORIGIN.trim()
+  : "*";
+
 // Middleware
 app.use(
   cors({
-    origin: "*",
+    origin: corsOrigin,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 // Static uploads directory
 app.use("/uploads", express.static(path.resolve("uploads")));
