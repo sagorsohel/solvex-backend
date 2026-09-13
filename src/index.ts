@@ -61,10 +61,12 @@ const localUploadsDir = path.resolve(process.cwd(), "uploads");
 
 // Serve static uploads from persistent directory
 app.use("/uploads", express.static(uploadsDir));
+app.use("/api/uploads", express.static(uploadsDir));
 
 // Fallback to local ./uploads if custom directory is configured
 if (uploadsDir !== localUploadsDir) {
   app.use("/uploads", express.static(localUploadsDir));
+  app.use("/api/uploads", express.static(localUploadsDir));
 }
 
 // Health & Info Endpoint

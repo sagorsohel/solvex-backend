@@ -169,8 +169,12 @@ router.post("/", uploadSingle, async (req: Request, res: Response) => {
 
   // 2. Persistent Local Storage fallback
   const configuredBaseUrl = process.env.APP_URL || process.env.BASE_URL;
-  const protocol = req.protocol;
-  const host = req.get("host") || `localhost:${process.env.PORT || 5000}`;
+  let host = req.get("x-forwarded-host") || req.get("host") || `localhost:${process.env.PORT || 5000}`;
+  let protocol = req.get("x-forwarded-proto") || req.protocol;
+  if (process.env.NODE_ENV === "production" && host.includes(":5000")) {
+    host = host.split(":")[0];
+    protocol = "https";
+  }
   const relativeUrl = `/uploads/${uploadedFile.filename}`;
   const fullUrl = configuredBaseUrl
     ? `${configuredBaseUrl.replace(/\/+$/, "")}${relativeUrl}`
