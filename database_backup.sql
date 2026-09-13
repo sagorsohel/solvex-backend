@@ -1,6 +1,6 @@
 -- Solvex Database Export
 -- Generated for Hostinger Deployment
--- Date: 2026-09-13T04:38:55.484Z
+-- Date: 2026-09-13T05:49:09.740Z
 
 SET FOREIGN_KEY_CHECKS=0;
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";

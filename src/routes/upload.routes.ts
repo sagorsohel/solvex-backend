@@ -2,19 +2,53 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
 
 const router = Router();
 
-// Ensure uploads directory exists
-const uploadsDir = path.resolve(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+/**
+ * Returns the resolved directory for persistent uploads.
+ * If UPLOADS_DIR is set in environment (e.g. '../uploads_storage' or '/var/uploads'),
+ * it stores files OUTSIDE the git working tree so 'git pull', 'git clean' or builds NEVER delete them.
+ */
+export const getUploadsDir = (): string => {
+  const customDir = process.env.UPLOADS_DIR;
+  const uploadsDir = customDir
+    ? path.resolve(customDir)
+    : path.resolve(process.cwd(), "uploads");
+
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  return uploadsDir;
+};
+
+/**
+ * Check if Cloudinary credentials are provided in environment
+ */
+export const isCloudinaryConfigured = (): boolean => {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
+};
+
+// Initialize Cloudinary if configured
+if (isCloudinaryConfigured()) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true,
+  });
+  console.log("☁️ Cloudinary cloud storage enabled for persistent uploads.");
 }
 
-// Multer storage configuration
+// Multer disk storage pointing to getUploadsDir()
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, uploadsDir);
+    cb(null, getUploadsDir());
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -85,20 +119,55 @@ const uploadSingle = (req: Request, res: Response, next: any) => {
 
 /**
  * POST /api/upload
- * Upload a single image file
+ * Upload a single image or PDF document.
+ * Automatically uploads to Cloudinary if configured in .env,
+ * otherwise saves to persistent disk storage (UPLOADS_DIR).
  */
-router.post("/", uploadSingle, (req: Request, res: Response) => {
+router.post("/", uploadSingle, async (req: Request, res: Response) => {
   const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
-  const uploadedFile = files?.file?.[0] || files?.image?.[0];
+  const uploadedFile = files?.file?.[0] || files?.image?.[0] || files?.pdf?.[0];
 
   if (!uploadedFile) {
     return res.status(400).json({
       success: false,
-      message: "No image file provided in 'file' or 'image' form field.",
+      message: "No file provided in 'file', 'image', or 'pdf' form field.",
     });
   }
 
-  // Construct full public URL (supports custom domain via APP_URL / BASE_URL)
+  // 1. If Cloudinary is enabled, upload to Cloudinary for 100% permanent cloud hosting
+  if (isCloudinaryConfigured()) {
+    try {
+      const isPdf = uploadedFile.mimetype === "application/pdf" || uploadedFile.originalname.endsWith(".pdf");
+      const uploadResult = await cloudinary.uploader.upload(uploadedFile.path, {
+        folder: "solvex_uploads",
+        resource_type: isPdf ? "raw" : "auto",
+        use_filename: true,
+        unique_filename: true,
+      });
+
+      // Remove local temporary file after successful cloud upload
+      try {
+        fs.unlinkSync(uploadedFile.path);
+      } catch (_) {}
+
+      return res.status(201).json({
+        success: true,
+        message: "File uploaded successfully to permanent cloud storage",
+        url: uploadResult.secure_url,
+        relativeUrl: uploadResult.secure_url,
+        filename: uploadResult.public_id,
+        originalName: uploadedFile.originalname,
+        mimetype: uploadedFile.mimetype,
+        size: uploadedFile.size,
+        provider: "cloudinary",
+      });
+    } catch (cloudErr: any) {
+      console.error("Cloudinary upload failed, using persistent local storage fallback:", cloudErr?.message);
+      // Falls through to persistent disk storage response below
+    }
+  }
+
+  // 2. Persistent Local Storage fallback
   const configuredBaseUrl = process.env.APP_URL || process.env.BASE_URL;
   const protocol = req.protocol;
   const host = req.get("host") || `localhost:${process.env.PORT || 5000}`;
@@ -109,13 +178,14 @@ router.post("/", uploadSingle, (req: Request, res: Response) => {
 
   return res.status(201).json({
     success: true,
-    message: "Image uploaded successfully",
+    message: "File uploaded successfully to persistent local storage",
     url: fullUrl,
     relativeUrl,
     filename: uploadedFile.filename,
     originalName: uploadedFile.originalname,
     mimetype: uploadedFile.mimetype,
     size: uploadedFile.size,
+    provider: "local",
   });
 });
 

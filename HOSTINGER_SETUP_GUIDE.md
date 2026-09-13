@@ -74,6 +74,9 @@ APP_URL=https://api.yourdomain.com
 
 # ফ্রন্টএন্ড ডোমেন (CORS)
 CORS_ORIGIN=*
+
+# পারসিস্টেন্ট আপলোড ফোল্ডার (Git Push বা Rebuild করলে ইমেজ যেন মুছে না যায়)
+UPLOADS_DIR=../uploads_storage
 ```
 3. **Save** করে ফাইলটি বন্ধ করুন।
 
@@ -217,15 +220,29 @@ VITE_API_URL=https://api.yourdomain.com/api
 <a name="সমস্যা-ও-সমাধান"></a>
 ## 🛠️ সাধারণ সমস্যা ও সমাধান (Troubleshooting)
 
-1. **Upload ফোল্ডার পারমিশন সমস্যা (Cannot upload images)**:
-   - Hostinger File Manager-এ গিয়ে `uploads` ফোল্ডারের Permissions `755` বা `775` আছে কিনা দেখে নিন।
-2. **CORS Error**:
+1. **Git Push বা Rebuild করলে ইমেজ যেন মুছে না যায় (Persistent Uploads Setup)**:
+   - Git Push করলে Hostinger রিপোজিটরির ভেতরের ফাইলগুলো সিঙ্ক করে, যার ফলে লোকাল `uploads` ফোল্ডার রিসেট হয়ে যেতে পারে।
+   - **সমাধান**: Hostinger-এর `.env` ফাইলে রিপোজিটরির বাইরে একটি পারসিস্টেন্ট ডিরেক্টরি সেট করুন:
+     ```env
+     UPLOADS_DIR=../uploads_storage
+     ```
+     এটি সেট করলে সমস্ত আপলোডকৃত ছবি Git রিপোজিটরির বাইরের ফোল্ডারে সেভ থাকবে। ফলে আপনি যতবারই Git Push বা Rebuild করবেন, একটা ছবিও কখনোই ডিলিট হবে না!
+   - **বিকল্প (ক্লাউড স্টোরেজ - Cloudinary)**:
+     চাইলে সম্পূর্ণ ফ্রীতে Cloudinary ব্যবহার করতে পারেন। Hostinger-এর `.env`-এ শুধু ক্লাউডিনারি কি বসিয়ে দিলে সব ইমেজ আজীবনের জন্য ক্লাউডে সুরক্ষিত থাকবে:
+     ```env
+     CLOUDINARY_CLOUD_NAME=your_cloud_name
+     CLOUDINARY_API_KEY=your_api_key
+     CLOUDINARY_API_SECRET=your_api_secret
+     ```
+2. **Upload ফোল্ডার পারমিশন সমস্যা (Cannot upload images)**:
+   - Hostinger File Manager-এ গিয়ে `uploads` বা `uploads_storage` ফোল্ডারের Permissions `755` বা `775` আছে কিনা দেখে নিন।
+3. **CORS Error**:
    - `.env` ফাইলে `CORS_ORIGIN=*` দেওয়া আছে কিনা চেক করুন অথবা আপনার ফ্রন্টএন্ড ডোমেন দিন (যেমন `https://solvexgloballtd.com`).
-3. **Database Connection Error (ECONNREFUSED / Access Denied)**:
+4. **Database Connection Error (ECONNREFUSED / Access Denied)**:
    - Hostinger hPanel-এ ডাটাবেসের ইউজার ও ডাটাবেস নেমের প্রিফিক্স চেক করুন (যেমন `u123456789_solvex_db`)।
    - পাসওয়ার্ডে কোনো ভুল আছে কিনা চেক করুন।
    - হোস্ট সবসময় `localhost` রাখবেন।
-4. **ভবিষ্যতে ডাটাবেস নতুন করে ব্যাকআপ নিতে চাইলে**:
+5. **ভবিষ্যতে ডাটাবেস নতুন করে ব্যাকআপ নিতে চাইলে**:
    - লোকাল প্রজেক্টের টার্মিনালে চালান: `npm run db:export`
-5. **ভবিষ্যতে নতুন ডিপ্লয়মেন্ট জিপ তৈরি করতে চাইলে**:
+6. **ভবিষ্যতে নতুন ডিপ্লয়মেন্ট জিপ তৈরি করতে চাইলে**:
    - লোকাল প্রজেক্টের টার্মিনালে চালান: `npm run package:deploy`

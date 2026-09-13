@@ -7,7 +7,8 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import aboutRoutes from "./routes/about.routes.js";
 import boardRoutes from "./routes/board.routes.js";
-import uploadRoutes from "./routes/upload.routes.js";
+import uploadRoutes, { getUploadsDir } from "./routes/upload.routes.js";
+import fs from "fs";
 import { servicesRouter, servicesPageRouter } from "./routes/service.routes.js";
 import {
   projectsRouter,
@@ -53,8 +54,17 @@ app.use(
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
-// Static uploads directory
-app.use("/uploads", express.static(path.resolve("uploads")));
+// Static uploads directory - supports persistent external storage (UPLOADS_DIR)
+const uploadsDir = getUploadsDir();
+const localUploadsDir = path.resolve(process.cwd(), "uploads");
+
+// Serve static uploads from persistent directory
+app.use("/uploads", express.static(uploadsDir));
+
+// Fallback to local ./uploads if custom directory is configured
+if (uploadsDir !== localUploadsDir) {
+  app.use("/uploads", express.static(localUploadsDir));
+}
 
 // Health & Info Endpoint
 app.get("/api/health", (_req, res) => {
@@ -107,8 +117,26 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 const server = app.listen(PORT, async () => {
   console.log(`🚀 Solvex Backend running at http://localhost:${PORT}`);
   console.log(`📦 Health Check: http://localhost:${PORT}/api/health`);
+  console.log(`📁 Uploads Storage Directory: ${uploadsDir}`);
   await testDbConnection();
   await ensureProductsColumns();
+
+  // Sync any existing legacy images from ./uploads to persistent uploadsDir
+  if (uploadsDir !== localUploadsDir && fs.existsSync(localUploadsDir)) {
+    try {
+      const files = fs.readdirSync(localUploadsDir);
+      for (const file of files) {
+        if (file === ".gitkeep") continue;
+        const src = path.join(localUploadsDir, file);
+        const dest = path.join(uploadsDir, file);
+        if (fs.existsSync(src) && !fs.existsSync(dest)) {
+          fs.copyFileSync(src, dest);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not sync local uploads to persistent directory:", e);
+    }
+  }
 });
 
 // Graceful shutdown on reload/termination
