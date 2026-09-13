@@ -25,6 +25,7 @@ import {
 } from "./routes/products-settings.routes.js";
 import homepageRoutes from "./routes/homepage.routes.js";
 import solutionsRoutes from "./routes/solutions.routes.js";
+import translateRoutes from "./routes/translate.routes.js";
 import { testDbConnection, pool } from "./db/index.js";
 import { ensureProductsColumns } from "./controllers/product.controller.js";
 import path from "path";
@@ -105,6 +106,7 @@ app.use("/api/product-sub-categories", productSubCategoriesRouter);
 app.use("/api/product-tree-categories", productTreeCategoriesRouter);
 app.use("/api/product-brands", productBrandsRouter);
 app.use("/api/product-models", productModelsRouter);
+app.use("/api/translate", translateRoutes);
 
 
 // 404 Handler

@@ -117,9 +117,27 @@ export const ensureProductSettingsTables = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Migration: ensure key_features column exists
+    // Migration: ensure key_features and translations columns exist
+    try {
+      await pool.query(`ALTER TABLE sister_concerns ADD COLUMN translations JSON NULL`);
+    } catch (_) {}
+    try {
+      await pool.query(`ALTER TABLE product_categories ADD COLUMN translations JSON NULL`);
+    } catch (_) {}
+    try {
+      await pool.query(`ALTER TABLE product_sub_categories ADD COLUMN translations JSON NULL`);
+    } catch (_) {}
+    try {
+      await pool.query(`ALTER TABLE product_tree_categories ADD COLUMN translations JSON NULL`);
+    } catch (_) {}
+    try {
+      await pool.query(`ALTER TABLE product_brands ADD COLUMN translations JSON NULL`);
+    } catch (_) {}
     try {
       await pool.query(`ALTER TABLE product_models ADD COLUMN key_features JSON NULL`);
+    } catch (_) {}
+    try {
+      await pool.query(`ALTER TABLE product_models ADD COLUMN translations JSON NULL`);
     } catch (_) {}
 
     // Check if initial seeding needed
@@ -274,7 +292,13 @@ export const getSisterConcerns = async (_req: Request, res: Response): Promise<v
       ORDER BY sc.order_index ASC, sc.id ASC
     `;
     const [rows]: any = await pool.query(query);
-    res.json({ status: "success", data: rows });
+    const mapped = rows.map((sc: any) => ({
+      ...sc,
+      translations: sc.translations
+        ? (typeof sc.translations === "string" ? JSON.parse(sc.translations) : sc.translations)
+        : {},
+    }));
+    res.json({ status: "success", data: mapped });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch sister concerns", error: error.message });
   }
@@ -288,7 +312,13 @@ export const getSisterConcernById = async (req: Request, res: Response): Promise
       res.status(404).json({ status: "error", message: "Sister concern not found" });
       return;
     }
-    res.json({ status: "success", data: rows[0] });
+    const item = {
+      ...rows[0],
+      translations: rows[0].translations
+        ? (typeof rows[0].translations === "string" ? JSON.parse(rows[0].translations) : rows[0].translations)
+        : {},
+    };
+    res.json({ status: "success", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch sister concern", error: error.message });
   }
@@ -297,15 +327,15 @@ export const getSisterConcernById = async (req: Request, res: Response): Promise
 export const createSisterConcern = async (req: Request, res: Response): Promise<void> => {
   try {
     await ensureProductSettingsTables();
-    const { name, code, description, logo, website, status, order_index } = req.body;
+    const { name, code, description, logo, website, status, order_index, translations } = req.body;
     if (!name?.trim()) {
       res.status(400).json({ status: "error", message: "Sister concern name is required" });
       return;
     }
 
     const [result]: any = await pool.query(`
-      INSERT INTO sister_concerns (name, code, description, logo, website, status, order_index)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sister_concerns (name, code, description, logo, website, status, order_index, translations)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       name.trim(),
       code?.trim() || null,
@@ -314,10 +344,17 @@ export const createSisterConcern = async (req: Request, res: Response): Promise<
       website?.trim() || null,
       status || "active",
       order_index ? parseInt(order_index, 10) : 0,
+      translations ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
     ]);
 
     const [created]: any = await pool.query(`SELECT * FROM sister_concerns WHERE id = ?`, [result.insertId]);
-    res.status(201).json({ status: "success", message: "Sister concern created successfully", data: created[0] });
+    const item = {
+      ...created[0],
+      translations: created[0].translations
+        ? (typeof created[0].translations === "string" ? JSON.parse(created[0].translations) : created[0].translations)
+        : {},
+    };
+    res.status(201).json({ status: "success", message: "Sister concern created successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to create sister concern", error: error.message });
   }
@@ -326,7 +363,7 @@ export const createSisterConcern = async (req: Request, res: Response): Promise<
 export const updateSisterConcern = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { name, code, description, logo, website, status, order_index } = req.body;
+    const { name, code, description, logo, website, status, order_index, translations } = req.body;
 
     const [existing]: any = await pool.query(`SELECT id FROM sister_concerns WHERE id = ?`, [id]);
     if (!existing.length) {
@@ -342,7 +379,8 @@ export const updateSisterConcern = async (req: Request, res: Response): Promise<
           logo = COALESCE(?, logo),
           website = COALESCE(?, website),
           status = COALESCE(?, status),
-          order_index = COALESCE(?, order_index)
+          order_index = COALESCE(?, order_index),
+          translations = COALESCE(?, translations)
       WHERE id = ?
     `, [
       name !== undefined ? name.trim() : null,
@@ -352,11 +390,18 @@ export const updateSisterConcern = async (req: Request, res: Response): Promise<
       website !== undefined ? website?.trim() || null : null,
       status !== undefined ? status : null,
       order_index !== undefined ? parseInt(order_index, 10) : null,
+      translations !== undefined ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
       id,
     ]);
 
     const [updated]: any = await pool.query(`SELECT * FROM sister_concerns WHERE id = ?`, [id]);
-    res.json({ status: "success", message: "Sister concern updated successfully", data: updated[0] });
+    const item = {
+      ...updated[0],
+      translations: updated[0].translations
+        ? (typeof updated[0].translations === "string" ? JSON.parse(updated[0].translations) : updated[0].translations)
+        : {},
+    };
+    res.json({ status: "success", message: "Sister concern updated successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to update sister concern", error: error.message });
   }
@@ -399,7 +444,13 @@ export const getProductCategories = async (req: Request, res: Response): Promise
     query += ` ORDER BY pc.order_index ASC, pc.id ASC `;
 
     const [rows]: any = await pool.query(query, params);
-    res.json({ status: "success", data: rows });
+    const mapped = rows.map((cat: any) => ({
+      ...cat,
+      translations: cat.translations
+        ? (typeof cat.translations === "string" ? JSON.parse(cat.translations) : cat.translations)
+        : {},
+    }));
+    res.json({ status: "success", data: mapped });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch product categories", error: error.message });
   }
@@ -419,7 +470,13 @@ export const getProductCategoryById = async (req: Request, res: Response): Promi
       res.status(404).json({ status: "error", message: "Category not found" });
       return;
     }
-    res.json({ status: "success", data: rows[0] });
+    const item = {
+      ...rows[0],
+      translations: rows[0].translations
+        ? (typeof rows[0].translations === "string" ? JSON.parse(rows[0].translations) : rows[0].translations)
+        : {},
+    };
+    res.json({ status: "success", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch category", error: error.message });
   }
@@ -428,7 +485,7 @@ export const getProductCategoryById = async (req: Request, res: Response): Promi
 export const createProductCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     await ensureProductSettingsTables();
-    const { sister_concern_id, name, slug, description, image, status, order_index } = req.body;
+    const { sister_concern_id, name, slug, description, image, status, order_index, translations } = req.body;
     if (!sister_concern_id) {
       res.status(400).json({ status: "error", message: "Please select a Sister Concern" });
       return;
@@ -441,8 +498,8 @@ export const createProductCategory = async (req: Request, res: Response): Promis
     const finalSlug = slug?.trim() || name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
     const [result]: any = await pool.query(`
-      INSERT INTO product_categories (sister_concern_id, name, slug, description, image, status, order_index)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO product_categories (sister_concern_id, name, slug, description, image, status, order_index, translations)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       parseInt(sister_concern_id, 10),
       name.trim(),
@@ -451,10 +508,17 @@ export const createProductCategory = async (req: Request, res: Response): Promis
       image?.trim() || null,
       status || "active",
       order_index ? parseInt(order_index, 10) : 0,
+      translations ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
     ]);
 
     const [created]: any = await pool.query(`SELECT * FROM product_categories WHERE id = ?`, [result.insertId]);
-    res.status(201).json({ status: "success", message: "Category created successfully", data: created[0] });
+    const item = {
+      ...created[0],
+      translations: created[0].translations
+        ? (typeof created[0].translations === "string" ? JSON.parse(created[0].translations) : created[0].translations)
+        : {},
+    };
+    res.status(201).json({ status: "success", message: "Category created successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to create category", error: error.message });
   }
@@ -463,7 +527,7 @@ export const createProductCategory = async (req: Request, res: Response): Promis
 export const updateProductCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { sister_concern_id, name, slug, description, image, status, order_index } = req.body;
+    const { sister_concern_id, name, slug, description, image, status, order_index, translations } = req.body;
 
     const [existing]: any = await pool.query(`SELECT id FROM product_categories WHERE id = ?`, [id]);
     if (!existing.length) {
@@ -479,7 +543,8 @@ export const updateProductCategory = async (req: Request, res: Response): Promis
           description = COALESCE(?, description),
           image = COALESCE(?, image),
           status = COALESCE(?, status),
-          order_index = COALESCE(?, order_index)
+          order_index = COALESCE(?, order_index),
+          translations = COALESCE(?, translations)
       WHERE id = ?
     `, [
       sister_concern_id ? parseInt(sister_concern_id, 10) : null,
@@ -489,11 +554,18 @@ export const updateProductCategory = async (req: Request, res: Response): Promis
       image !== undefined ? image?.trim() || null : null,
       status !== undefined ? status : null,
       order_index !== undefined ? parseInt(order_index, 10) : null,
+      translations !== undefined ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
       id,
     ]);
 
     const [updated]: any = await pool.query(`SELECT * FROM product_categories WHERE id = ?`, [id]);
-    res.json({ status: "success", message: "Category updated successfully", data: updated[0] });
+    const item = {
+      ...updated[0],
+      translations: updated[0].translations
+        ? (typeof updated[0].translations === "string" ? JSON.parse(updated[0].translations) : updated[0].translations)
+        : {},
+    };
+    res.json({ status: "success", message: "Category updated successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to update category", error: error.message });
   }
@@ -543,7 +615,13 @@ export const getProductSubCategories = async (req: Request, res: Response): Prom
     query += ` ORDER BY psc.order_index ASC, psc.id ASC `;
 
     const [rows]: any = await pool.query(query, params);
-    res.json({ status: "success", data: rows });
+    const mapped = rows.map((sub: any) => ({
+      ...sub,
+      translations: sub.translations
+        ? (typeof sub.translations === "string" ? JSON.parse(sub.translations) : sub.translations)
+        : {},
+    }));
+    res.json({ status: "success", data: mapped });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch sub-categories", error: error.message });
   }
@@ -552,7 +630,7 @@ export const getProductSubCategories = async (req: Request, res: Response): Prom
 export const createProductSubCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     await ensureProductSettingsTables();
-    const { product_category_id, name, slug, description, image, status, order_index } = req.body;
+    const { product_category_id, name, slug, description, image, status, order_index, translations } = req.body;
     if (!product_category_id) {
       res.status(400).json({ status: "error", message: "Please select a Category" });
       return;
@@ -565,8 +643,8 @@ export const createProductSubCategory = async (req: Request, res: Response): Pro
     const finalSlug = slug?.trim() || name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
     const [result]: any = await pool.query(`
-      INSERT INTO product_sub_categories (product_category_id, name, slug, description, image, status, order_index)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO product_sub_categories (product_category_id, name, slug, description, image, status, order_index, translations)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       parseInt(product_category_id, 10),
       name.trim(),
@@ -575,10 +653,17 @@ export const createProductSubCategory = async (req: Request, res: Response): Pro
       image?.trim() || null,
       status || "active",
       order_index ? parseInt(order_index, 10) : 0,
+      translations ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
     ]);
 
     const [created]: any = await pool.query(`SELECT * FROM product_sub_categories WHERE id = ?`, [result.insertId]);
-    res.status(201).json({ status: "success", message: "Sub category created successfully", data: created[0] });
+    const item = {
+      ...created[0],
+      translations: created[0].translations
+        ? (typeof created[0].translations === "string" ? JSON.parse(created[0].translations) : created[0].translations)
+        : {},
+    };
+    res.status(201).json({ status: "success", message: "Sub category created successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to create sub category", error: error.message });
   }
@@ -587,7 +672,7 @@ export const createProductSubCategory = async (req: Request, res: Response): Pro
 export const updateProductSubCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { product_category_id, name, slug, description, image, status, order_index } = req.body;
+    const { product_category_id, name, slug, description, image, status, order_index, translations } = req.body;
 
     const [existing]: any = await pool.query(`SELECT id FROM product_sub_categories WHERE id = ?`, [id]);
     if (!existing.length) {
@@ -603,7 +688,8 @@ export const updateProductSubCategory = async (req: Request, res: Response): Pro
           description = COALESCE(?, description),
           image = COALESCE(?, image),
           status = COALESCE(?, status),
-          order_index = COALESCE(?, order_index)
+          order_index = COALESCE(?, order_index),
+          translations = COALESCE(?, translations)
       WHERE id = ?
     `, [
       product_category_id ? parseInt(product_category_id, 10) : null,
@@ -613,11 +699,18 @@ export const updateProductSubCategory = async (req: Request, res: Response): Pro
       image !== undefined ? image?.trim() || null : null,
       status !== undefined ? status : null,
       order_index !== undefined ? parseInt(order_index, 10) : null,
+      translations !== undefined ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
       id,
     ]);
 
     const [updated]: any = await pool.query(`SELECT * FROM product_sub_categories WHERE id = ?`, [id]);
-    res.json({ status: "success", message: "Sub category updated successfully", data: updated[0] });
+    const item = {
+      ...updated[0],
+      translations: updated[0].translations
+        ? (typeof updated[0].translations === "string" ? JSON.parse(updated[0].translations) : updated[0].translations)
+        : {},
+    };
+    res.json({ status: "success", message: "Sub category updated successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to update sub category", error: error.message });
   }
@@ -664,7 +757,13 @@ export const getProductTreeCategories = async (req: Request, res: Response): Pro
     query += ` ORDER BY ptc.order_index ASC, ptc.id ASC `;
 
     const [rows]: any = await pool.query(query, params);
-    res.json({ status: "success", data: rows });
+    const mapped = rows.map((tree: any) => ({
+      ...tree,
+      translations: tree.translations
+        ? (typeof tree.translations === "string" ? JSON.parse(tree.translations) : tree.translations)
+        : {},
+    }));
+    res.json({ status: "success", data: mapped });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch tree categories", error: error.message });
   }
@@ -673,7 +772,7 @@ export const getProductTreeCategories = async (req: Request, res: Response): Pro
 export const createProductTreeCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     await ensureProductSettingsTables();
-    const { product_sub_category_id, name, slug, description, status, order_index } = req.body;
+    const { product_sub_category_id, name, slug, description, status, order_index, translations } = req.body;
     if (!product_sub_category_id) {
       res.status(400).json({ status: "error", message: "Please select a Sub Category" });
       return;
@@ -686,8 +785,8 @@ export const createProductTreeCategory = async (req: Request, res: Response): Pr
     const finalSlug = slug?.trim() || name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
     const [result]: any = await pool.query(`
-      INSERT INTO product_tree_categories (product_sub_category_id, name, slug, description, status, order_index)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO product_tree_categories (product_sub_category_id, name, slug, description, status, order_index, translations)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
       parseInt(product_sub_category_id, 10),
       name.trim(),
@@ -695,10 +794,17 @@ export const createProductTreeCategory = async (req: Request, res: Response): Pr
       description?.trim() || null,
       status || "active",
       order_index ? parseInt(order_index, 10) : 0,
+      translations ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
     ]);
 
     const [created]: any = await pool.query(`SELECT * FROM product_tree_categories WHERE id = ?`, [result.insertId]);
-    res.status(201).json({ status: "success", message: "Tree category created successfully", data: created[0] });
+    const item = {
+      ...created[0],
+      translations: created[0].translations
+        ? (typeof created[0].translations === "string" ? JSON.parse(created[0].translations) : created[0].translations)
+        : {},
+    };
+    res.status(201).json({ status: "success", message: "Tree category created successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to create tree category", error: error.message });
   }
@@ -707,7 +813,7 @@ export const createProductTreeCategory = async (req: Request, res: Response): Pr
 export const updateProductTreeCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { product_sub_category_id, name, slug, description, status, order_index } = req.body;
+    const { product_sub_category_id, name, slug, description, status, order_index, translations } = req.body;
 
     const [existing]: any = await pool.query(`SELECT id FROM product_tree_categories WHERE id = ?`, [id]);
     if (!existing.length) {
@@ -722,7 +828,8 @@ export const updateProductTreeCategory = async (req: Request, res: Response): Pr
           slug = COALESCE(?, slug),
           description = COALESCE(?, description),
           status = COALESCE(?, status),
-          order_index = COALESCE(?, order_index)
+          order_index = COALESCE(?, order_index),
+          translations = COALESCE(?, translations)
       WHERE id = ?
     `, [
       product_sub_category_id ? parseInt(product_sub_category_id, 10) : null,
@@ -731,11 +838,18 @@ export const updateProductTreeCategory = async (req: Request, res: Response): Pr
       description !== undefined ? description?.trim() || null : null,
       status !== undefined ? status : null,
       order_index !== undefined ? parseInt(order_index, 10) : null,
+      translations !== undefined ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
       id,
     ]);
 
     const [updated]: any = await pool.query(`SELECT * FROM product_tree_categories WHERE id = ?`, [id]);
-    res.json({ status: "success", message: "Tree category updated successfully", data: updated[0] });
+    const item = {
+      ...updated[0],
+      translations: updated[0].translations
+        ? (typeof updated[0].translations === "string" ? JSON.parse(updated[0].translations) : updated[0].translations)
+        : {},
+    };
+    res.json({ status: "success", message: "Tree category updated successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to update tree category", error: error.message });
   }
@@ -765,7 +879,13 @@ export const getProductBrands = async (_req: Request, res: Response): Promise<vo
       ORDER BY pb.order_index ASC, pb.name ASC
     `;
     const [rows]: any = await pool.query(query);
-    res.json({ status: "success", data: rows });
+    const mapped = rows.map((b: any) => ({
+      ...b,
+      translations: b.translations
+        ? (typeof b.translations === "string" ? JSON.parse(b.translations) : b.translations)
+        : {},
+    }));
+    res.json({ status: "success", data: mapped });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch brands", error: error.message });
   }
@@ -779,7 +899,13 @@ export const getProductBrandById = async (req: Request, res: Response): Promise<
       res.status(404).json({ status: "error", message: "Brand not found" });
       return;
     }
-    res.json({ status: "success", data: rows[0] });
+    const item = {
+      ...rows[0],
+      translations: rows[0].translations
+        ? (typeof rows[0].translations === "string" ? JSON.parse(rows[0].translations) : rows[0].translations)
+        : {},
+    };
+    res.json({ status: "success", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch brand", error: error.message });
   }
@@ -788,7 +914,7 @@ export const getProductBrandById = async (req: Request, res: Response): Promise<
 export const createProductBrand = async (req: Request, res: Response): Promise<void> => {
   try {
     await ensureProductSettingsTables();
-    const { name, slug, logo, origin_country, website, description, status, order_index } = req.body;
+    const { name, slug, logo, origin_country, website, description, status, order_index, translations } = req.body;
     if (!name?.trim()) {
       res.status(400).json({ status: "error", message: "Brand name is required" });
       return;
@@ -797,8 +923,8 @@ export const createProductBrand = async (req: Request, res: Response): Promise<v
     const finalSlug = slug?.trim() || name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
     const [result]: any = await pool.query(`
-      INSERT INTO product_brands (name, slug, logo, origin_country, website, description, status, order_index)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO product_brands (name, slug, logo, origin_country, website, description, status, order_index, translations)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       name.trim(),
       finalSlug,
@@ -808,10 +934,17 @@ export const createProductBrand = async (req: Request, res: Response): Promise<v
       description?.trim() || null,
       status || "active",
       order_index ? parseInt(order_index, 10) : 0,
+      translations ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
     ]);
 
     const [created]: any = await pool.query(`SELECT * FROM product_brands WHERE id = ?`, [result.insertId]);
-    res.status(201).json({ status: "success", message: "Brand created successfully", data: created[0] });
+    const item = {
+      ...created[0],
+      translations: created[0].translations
+        ? (typeof created[0].translations === "string" ? JSON.parse(created[0].translations) : created[0].translations)
+        : {},
+    };
+    res.status(201).json({ status: "success", message: "Brand created successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to create brand", error: error.message });
   }
@@ -820,7 +953,7 @@ export const createProductBrand = async (req: Request, res: Response): Promise<v
 export const updateProductBrand = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { name, slug, logo, origin_country, website, description, status, order_index } = req.body;
+    const { name, slug, logo, origin_country, website, description, status, order_index, translations } = req.body;
 
     const [existing]: any = await pool.query(`SELECT id FROM product_brands WHERE id = ?`, [id]);
     if (!existing.length) {
@@ -837,7 +970,8 @@ export const updateProductBrand = async (req: Request, res: Response): Promise<v
           website = COALESCE(?, website),
           description = COALESCE(?, description),
           status = COALESCE(?, status),
-          order_index = COALESCE(?, order_index)
+          order_index = COALESCE(?, order_index),
+          translations = COALESCE(?, translations)
       WHERE id = ?
     `, [
       name !== undefined ? name.trim() : null,
@@ -848,11 +982,18 @@ export const updateProductBrand = async (req: Request, res: Response): Promise<v
       description !== undefined ? description?.trim() || null : null,
       status !== undefined ? status : null,
       order_index !== undefined ? parseInt(order_index, 10) : null,
+      translations !== undefined ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
       id,
     ]);
 
     const [updated]: any = await pool.query(`SELECT * FROM product_brands WHERE id = ?`, [id]);
-    res.json({ status: "success", message: "Brand updated successfully", data: updated[0] });
+    const item = {
+      ...updated[0],
+      translations: updated[0].translations
+        ? (typeof updated[0].translations === "string" ? JSON.parse(updated[0].translations) : updated[0].translations)
+        : {},
+    };
+    res.json({ status: "success", message: "Brand updated successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to update brand", error: error.message });
   }
@@ -900,6 +1041,9 @@ export const getProductModels = async (req: Request, res: Response): Promise<voi
       key_features: pm.key_features
         ? (typeof pm.key_features === "string" ? JSON.parse(pm.key_features) : pm.key_features)
         : [],
+      translations: pm.translations
+        ? (typeof pm.translations === "string" ? JSON.parse(pm.translations) : pm.translations)
+        : {},
     }));
     res.json({ status: "success", data: mapped });
   } catch (error: any) {
@@ -926,6 +1070,9 @@ export const getProductModelById = async (req: Request, res: Response): Promise<
       key_features: rows[0].key_features
         ? (typeof rows[0].key_features === "string" ? JSON.parse(rows[0].key_features) : rows[0].key_features)
         : [],
+      translations: rows[0].translations
+        ? (typeof rows[0].translations === "string" ? JSON.parse(rows[0].translations) : rows[0].translations)
+        : {},
     };
     res.json({ status: "success", data: item });
   } catch (error: any) {
@@ -936,7 +1083,7 @@ export const getProductModelById = async (req: Request, res: Response): Promise<
 export const createProductModel = async (req: Request, res: Response): Promise<void> => {
   try {
     await ensureProductSettingsTables();
-    const { brand_id, name, model_number, specifications, description, key_features, status, order_index } = req.body;
+    const { brand_id, name, model_number, specifications, description, key_features, translations, status, order_index } = req.body;
     if (!brand_id) {
       res.status(400).json({ status: "error", message: "Please select a Brand" });
       return;
@@ -947,8 +1094,8 @@ export const createProductModel = async (req: Request, res: Response): Promise<v
     }
 
     const [result]: any = await pool.query(`
-      INSERT INTO product_models (brand_id, name, model_number, specifications, description, key_features, status, order_index)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO product_models (brand_id, name, model_number, specifications, description, key_features, translations, status, order_index)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       parseInt(brand_id, 10),
       name.trim(),
@@ -956,6 +1103,7 @@ export const createProductModel = async (req: Request, res: Response): Promise<v
       specifications?.trim() || null,
       description?.trim() || null,
       key_features ? JSON.stringify(Array.isArray(key_features) ? key_features : [key_features]) : JSON.stringify([]),
+      translations ? JSON.stringify(translations) : JSON.stringify({}),
       status || "active",
       order_index ? parseInt(order_index, 10) : 0,
     ]);
@@ -966,6 +1114,9 @@ export const createProductModel = async (req: Request, res: Response): Promise<v
       key_features: created[0].key_features
         ? (typeof created[0].key_features === "string" ? JSON.parse(created[0].key_features) : created[0].key_features)
         : [],
+      translations: created[0].translations
+        ? (typeof created[0].translations === "string" ? JSON.parse(created[0].translations) : created[0].translations)
+        : {},
     };
     res.status(201).json({ status: "success", message: "Model created successfully", data: item });
   } catch (error: any) {
@@ -977,7 +1128,7 @@ export const updateProductModel = async (req: Request, res: Response): Promise<v
   try {
     await ensureProductSettingsTables();
     const id = parseInt(req.params.id, 10);
-    const { brand_id, name, model_number, specifications, description, key_features, status, order_index } = req.body;
+    const { brand_id, name, model_number, specifications, description, key_features, translations, status, order_index } = req.body;
 
     const [existing]: any = await pool.query(`SELECT id FROM product_models WHERE id = ?`, [id]);
     if (!existing.length) {
@@ -993,6 +1144,7 @@ export const updateProductModel = async (req: Request, res: Response): Promise<v
           specifications = COALESCE(?, specifications),
           description = COALESCE(?, description),
           key_features = COALESCE(?, key_features),
+          translations = COALESCE(?, translations),
           status = COALESCE(?, status),
           order_index = COALESCE(?, order_index)
       WHERE id = ?
@@ -1003,6 +1155,7 @@ export const updateProductModel = async (req: Request, res: Response): Promise<v
       specifications !== undefined ? specifications?.trim() || null : null,
       description !== undefined ? description?.trim() || null : null,
       key_features !== undefined ? JSON.stringify(Array.isArray(key_features) ? key_features : []) : null,
+      translations !== undefined ? JSON.stringify(translations) : null,
       status !== undefined ? status : null,
       order_index !== undefined ? parseInt(order_index, 10) : null,
       id,
@@ -1014,6 +1167,9 @@ export const updateProductModel = async (req: Request, res: Response): Promise<v
       key_features: updated[0].key_features
         ? (typeof updated[0].key_features === "string" ? JSON.parse(updated[0].key_features) : updated[0].key_features)
         : [],
+      translations: updated[0].translations
+        ? (typeof updated[0].translations === "string" ? JSON.parse(updated[0].translations) : updated[0].translations)
+        : {},
     };
     res.json({ status: "success", message: "Model updated successfully", data: item });
   } catch (error: any) {

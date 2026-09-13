@@ -30,6 +30,10 @@ export const ensureServicesTables = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    try {
+      await pool.query(`ALTER TABLE services ADD COLUMN translations JSON NULL`);
+    } catch (_) {}
+
     // 2. Create services_page_settings table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS services_page_settings (
@@ -255,6 +259,7 @@ export const getServices = async (req: Request, res: Response): Promise<void> =>
       faqs: s.faqs || [],
       status: s.status,
       order_index: s.orderIndex,
+      translations: s.translations || {},
       created_at: s.createdAt,
       updated_at: s.updatedAt,
     }));
@@ -301,6 +306,7 @@ export const getServiceBySlug = async (req: Request, res: Response): Promise<voi
           faqs: s.faqs || [],
           status: s.status,
           order_index: s.orderIndex,
+          translations: s.translations || {},
           created_at: s.createdAt,
           updated_at: s.updatedAt,
         },
@@ -341,6 +347,7 @@ export const createService = async (req: AuthenticatedRequest, res: Response): P
       faqs,
       status,
       order_index,
+      translations,
     } = req.body;
 
     if (!title) {
@@ -362,6 +369,7 @@ export const createService = async (req: AuthenticatedRequest, res: Response): P
       faqs: Array.isArray(faqs) ? faqs : [],
       status: status === "draft" ? "draft" : "published",
       orderIndex: Number(order_index) || 0,
+      translations: translations || null,
     });
 
     try {
@@ -405,6 +413,7 @@ export const updateService = async (req: AuthenticatedRequest, res: Response): P
       faqs,
       status,
       order_index,
+      translations,
     } = req.body;
 
     const existing = await db.select().from(services).where(eq(services.id, id)).limit(1);
@@ -429,6 +438,7 @@ export const updateService = async (req: AuthenticatedRequest, res: Response): P
         faqs: faqs !== undefined ? faqs : existing[0].faqs,
         status: status !== undefined ? status : existing[0].status,
         orderIndex: order_index !== undefined ? Number(order_index) : existing[0].orderIndex,
+        translations: translations !== undefined ? translations : existing[0].translations,
       })
       .where(eq(services.id, id));
 

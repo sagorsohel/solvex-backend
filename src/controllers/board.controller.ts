@@ -4,8 +4,20 @@ import { db } from "../db/index.js";
 import { boardMembers, activityLogs } from "../db/schema.js";
 import { asc, eq } from "drizzle-orm";
 
+import { pool } from "../db/index.js";
+
+let boardMigrationDone = false;
+const ensureBoardMigration = async () => {
+  if (boardMigrationDone) return;
+  try {
+    await pool.query(`ALTER TABLE board_members ADD COLUMN translations JSON NULL`);
+  } catch (_) {}
+  boardMigrationDone = true;
+};
+
 export const getBoardMembers = async (_req: Request, res: Response): Promise<void> => {
   try {
+    await ensureBoardMigration();
     const list = await db
       .select({
         id: boardMembers.id,
@@ -16,6 +28,7 @@ export const getBoardMembers = async (_req: Request, res: Response): Promise<voi
         bio: boardMembers.bio,
         display_in_website: boardMembers.displayInWebsite,
         order_index: boardMembers.orderIndex,
+        translations: boardMembers.translations,
         created_at: boardMembers.createdAt,
         updated_at: boardMembers.updatedAt,
       })
@@ -34,7 +47,8 @@ export const getBoardMembers = async (_req: Request, res: Response): Promise<voi
 
 export const createBoardMember = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { name, designation, tag, image, bio, display_in_website, order_index } = req.body;
+    await ensureBoardMigration();
+    const { name, designation, tag, image, bio, display_in_website, order_index, translations } = req.body;
 
     if (!name || !designation) {
       res.status(400).json({ status: "error", message: "Name and designation are required." });
@@ -49,6 +63,7 @@ export const createBoardMember = async (req: AuthenticatedRequest, res: Response
       bio: bio || null,
       displayInWebsite: display_in_website !== undefined ? Boolean(display_in_website) : true,
       orderIndex: Number(order_index) || 0,
+      translations: translations || null,
     });
 
     try {
@@ -69,8 +84,9 @@ export const createBoardMember = async (req: AuthenticatedRequest, res: Response
 
 export const updateBoardMember = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
+    await ensureBoardMigration();
     const { id } = req.params;
-    const { name, designation, tag, image, bio, display_in_website, order_index } = req.body;
+    const { name, designation, tag, image, bio, display_in_website, order_index, translations } = req.body;
 
     await db
       .update(boardMembers)
@@ -82,6 +98,7 @@ export const updateBoardMember = async (req: AuthenticatedRequest, res: Response
         bio: bio !== undefined ? bio : undefined,
         displayInWebsite: display_in_website !== undefined ? Boolean(display_in_website) : undefined,
         orderIndex: order_index !== undefined ? Number(order_index) : undefined,
+        translations: translations !== undefined ? translations : undefined,
       })
       .where(eq(boardMembers.id, Number(id)));
 

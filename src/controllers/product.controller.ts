@@ -31,6 +31,7 @@ export const ensureProductsColumns = async () => {
       { name: "datasheet_pdf", definition: "VARCHAR(500) NULL" },
       { name: "datasheet_specs", definition: "JSON NULL" },
       { name: "brochures", definition: "JSON NULL" },
+      { name: "translations", definition: "JSON NULL" },
     ];
 
     for (const col of columnsToAdd) {
@@ -96,6 +97,7 @@ export const getProducts = async (req: AuthenticatedRequest, res: Response): Pro
       gallery_images: safeJsonParse(row.gallery_images, []),
       datasheet_specs: safeJsonParse(row.datasheet_specs, []),
       brochures: safeJsonParse(row.brochures, []),
+      translations: safeJsonParse(row.translations, {}),
       is_featured: Boolean(row.is_featured),
     }));
 
@@ -148,6 +150,7 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
       gallery_images: safeJsonParse(row.gallery_images, []),
       datasheet_specs: safeJsonParse(row.datasheet_specs, []),
       brochures: safeJsonParse(row.brochures, []),
+      translations: safeJsonParse(row.translations, {}),
       is_featured: Boolean(row.is_featured),
     };
 
@@ -231,6 +234,7 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
       datasheet_specs,
       brochures,
       is_featured,
+      translations,
     } = req.body;
 
     if (!title) {
@@ -249,6 +253,7 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
     const galleryImagesJson = Array.isArray(gallery_images) ? JSON.stringify(gallery_images) : JSON.stringify([]);
     const datasheetSpecsJson = Array.isArray(datasheet_specs) ? JSON.stringify(datasheet_specs) : JSON.stringify([]);
     const brochuresJson = Array.isArray(brochures) ? JSON.stringify(brochures) : JSON.stringify([]);
+    const translationsJson = translations ? JSON.stringify(translations) : JSON.stringify({});
 
     // 13-Digit Tracked & Unique SKU resolution
     let finalSku = sku;
@@ -267,8 +272,8 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
         title, slug, category, sister_concern_id, product_category_id,
         product_sub_category_id, product_tree_category_id, product_brand_id,
         product_model_id, sku, price, stock, status, features,
-        description, image, gallery_images, datasheet_pdf, datasheet_specs, brochures, is_featured
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        description, image, gallery_images, datasheet_pdf, datasheet_specs, brochures, is_featured, translations
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       [
         title,
@@ -292,6 +297,7 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
         datasheetSpecsJson,
         brochuresJson,
         is_featured ? 1 : 0,
+        translationsJson,
       ]
     );
 
@@ -342,6 +348,7 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
       datasheet_specs,
       brochures,
       is_featured,
+      translations,
     } = req.body;
 
     const generatedSlug = (slug || title || "")
@@ -354,6 +361,7 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
     const galleryImagesJson = Array.isArray(gallery_images) ? JSON.stringify(gallery_images) : undefined;
     const datasheetSpecsJson = Array.isArray(datasheet_specs) ? JSON.stringify(datasheet_specs) : undefined;
     const brochuresJson = Array.isArray(brochures) ? JSON.stringify(brochures) : undefined;
+    const translationsJson = translations !== undefined ? JSON.stringify(translations) : undefined;
 
     await pool.query(
       `
@@ -378,7 +386,8 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
         datasheet_pdf = ?,
         datasheet_specs = COALESCE(?, datasheet_specs),
         brochures = COALESCE(?, brochures),
-        is_featured = ?
+        is_featured = ?,
+        translations = COALESCE(?, translations)
       WHERE id = ?
     `,
       [
@@ -403,6 +412,7 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
         datasheetSpecsJson || null,
         brochuresJson || null,
         is_featured ? 1 : 0,
+        translationsJson !== undefined ? translationsJson : null,
         Number(id),
       ]
     );

@@ -48,6 +48,10 @@ export const ensureProjectsTables = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    try {
+      await pool.query(`ALTER TABLE projects ADD COLUMN translations JSON NULL`);
+    } catch (_) {}
+
     // 3. Create projects_page_settings table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS projects_page_settings (
@@ -187,6 +191,7 @@ const formatProjectResponse = (p: any, catMap?: Map<number, any>) => {
     faq_questions: p.faqQuestions || [],
     status: p.status,
     order_index: p.orderIndex,
+    translations: p.translations || {},
     created_at: p.createdAt,
     updated_at: p.updatedAt,
   };
@@ -257,6 +262,7 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
       faq_questions,
       status,
       order_index,
+      translations,
     } = req.body;
 
     if (!big_title) {
@@ -281,6 +287,7 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
       faqQuestions: faq_questions || [],
       status: status || "published",
       orderIndex: typeof order_index === "number" ? order_index : 0,
+      translations: translations || null,
     });
 
     res.status(201).json({
@@ -318,6 +325,7 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
       faq_questions,
       status,
       order_index,
+      translations,
     } = req.body;
 
     await db
@@ -335,6 +343,7 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
         faqQuestions: faq_questions !== undefined ? faq_questions : existing[0].faqQuestions,
         status: status !== undefined ? status : existing[0].status,
         orderIndex: order_index !== undefined ? Number(order_index) : existing[0].orderIndex,
+        translations: translations !== undefined ? translations : existing[0].translations,
       })
       .where(eq(projects.id, id));
 

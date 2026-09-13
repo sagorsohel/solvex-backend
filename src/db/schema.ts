@@ -35,6 +35,7 @@ export const products = mysqlTable("products", {
   datasheetSpecs: json("datasheet_specs").$type<Array<{ id: string; key: string; hasValues: boolean; values: [string, string, string] }>>(),
   brochures: json("brochures").$type<Array<{ id: string; title: string; pdfUrl: string; fileSize?: string }>>(),
   isFeatured: boolean("is_featured").default(false).notNull(),
+  translations: json("translations").$type<{ bn?: { title?: string; description?: string; features?: string[] } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -70,6 +71,7 @@ export const boardMembers = mysqlTable("board_members", {
   bio: text("bio"),
   displayInWebsite: boolean("display_in_website").default(true).notNull(),
   orderIndex: int("order_index").default(0).notNull(),
+  translations: json("translations").$type<{ bn?: { name?: string; designation?: string; bio?: string } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -139,6 +141,7 @@ export const services = mysqlTable("services", {
   faqs: json("faqs").$type<Array<{ question: string; answer: string }>>(),
   status: mysqlEnum("status", ["published", "draft"]).default("published").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
+  translations: json("translations").$type<{ bn?: { title?: string; short_description?: string } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -190,6 +193,7 @@ export const projects = mysqlTable("projects", {
   faqQuestions: json("faq_questions").$type<Array<{ question: string; answer: string }>>(),
   status: mysqlEnum("status", ["published", "draft"]).default("published").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
+  translations: json("translations").$type<{ bn?: { big_title?: string; label?: string; description?: string } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -229,6 +233,7 @@ export const sisterConcerns = mysqlTable("sister_concerns", {
   website: varchar("website", { length: 255 }),
   status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
+  translations: json("translations").$type<{ bn?: { name?: string; description?: string } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -243,6 +248,7 @@ export const productCategories = mysqlTable("product_categories", {
   image: varchar("image", { length: 500 }),
   status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
+  translations: json("translations").$type<{ bn?: { name?: string; description?: string } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -257,6 +263,7 @@ export const productSubCategories = mysqlTable("product_sub_categories", {
   image: varchar("image", { length: 500 }),
   status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
+  translations: json("translations").$type<{ bn?: { name?: string; description?: string } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -270,6 +277,7 @@ export const productTreeCategories = mysqlTable("product_tree_categories", {
   description: text("description"),
   status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
+  translations: json("translations").$type<{ bn?: { name?: string; description?: string } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -285,6 +293,7 @@ export const productBrands = mysqlTable("product_brands", {
   description: text("description"),
   status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
+  translations: json("translations").$type<{ bn?: { name?: string; description?: string } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -298,6 +307,7 @@ export const productModels = mysqlTable("product_models", {
   specifications: text("specifications"),
   description: text("description"),
   keyFeatures: json("key_features").$type<string[]>(),
+  translations: json("translations").$type<{ bn?: { name?: string; specifications?: string; description?: string; key_features?: string[] } }>(),
   status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
