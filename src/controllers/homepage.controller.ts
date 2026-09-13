@@ -120,7 +120,6 @@ export const defaultHomepageData = {
     { id: "cnt-1", counter: "150+", description: "MW Total Solar Capacity Installed" },
     { id: "cnt-2", counter: "99.8%", description: "System Uptime & Grid Reliability" },
     { id: "cnt-3", counter: "450+", description: "Commercial & Industrial Projects" },
-    { id: "cnt-4", counter: "25k+", description: "Tons Annual CO2 Emission Reduced" },
   ],
   why_choose_us_section: {
     tag: "THE SOLVEX ADVANTAGE",
