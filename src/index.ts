@@ -24,6 +24,7 @@ import {
   productModelsRouter,
 } from "./routes/products-settings.routes.js";
 import homepageRoutes from "./routes/homepage.routes.js";
+import solutionsRoutes from "./routes/solutions.routes.js";
 import { testDbConnection, pool } from "./db/index.js";
 import { ensureProductsColumns } from "./controllers/product.controller.js";
 import path from "path";
@@ -93,6 +94,7 @@ app.use("/api/services-page", servicesPageRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/project-categories", projectCategoriesRouter);
 app.use("/api/projects-page", projectsPageRouter);
+app.use("/api", solutionsRoutes);
 
 // Products Settings & Sister Concerns Hierarchy Routes
 app.use("/api/sister-concerns", sisterConcernsRouter);
