@@ -297,6 +297,7 @@ export const productModels = mysqlTable("product_models", {
   modelNumber: varchar("model_number", { length: 191 }),
   specifications: text("specifications"),
   description: text("description"),
+  keyFeatures: json("key_features").$type<string[]>(),
   status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

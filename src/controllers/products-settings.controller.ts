@@ -108,6 +108,7 @@ export const ensureProductSettingsTables = async () => {
         model_number VARCHAR(191),
         specifications TEXT,
         description TEXT,
+        key_features JSON,
         status ENUM('active', 'inactive') DEFAULT 'active' NOT NULL,
         order_index INT DEFAULT 0 NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -115,6 +116,11 @@ export const ensureProductSettingsTables = async () => {
         INDEX idx_brand_id (brand_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // Migration: ensure key_features column exists
+    try {
+      await pool.query(`ALTER TABLE product_models ADD COLUMN key_features JSON NULL`);
+    } catch (_) {}
 
     // Check if initial seeding needed
     const [scRows]: any = await pool.query(`SELECT COUNT(*) as count FROM sister_concerns`);
@@ -889,7 +895,13 @@ export const getProductModels = async (req: Request, res: Response): Promise<voi
     query += ` ORDER BY pm.order_index ASC, pm.id ASC `;
 
     const [rows]: any = await pool.query(query, params);
-    res.json({ status: "success", data: rows });
+    const mapped = rows.map((pm: any) => ({
+      ...pm,
+      key_features: pm.key_features
+        ? (typeof pm.key_features === "string" ? JSON.parse(pm.key_features) : pm.key_features)
+        : [],
+    }));
+    res.json({ status: "success", data: mapped });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch models", error: error.message });
   }
@@ -909,7 +921,13 @@ export const getProductModelById = async (req: Request, res: Response): Promise<
       res.status(404).json({ status: "error", message: "Model not found" });
       return;
     }
-    res.json({ status: "success", data: rows[0] });
+    const item = {
+      ...rows[0],
+      key_features: rows[0].key_features
+        ? (typeof rows[0].key_features === "string" ? JSON.parse(rows[0].key_features) : rows[0].key_features)
+        : [],
+    };
+    res.json({ status: "success", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to fetch model", error: error.message });
   }
@@ -918,7 +936,7 @@ export const getProductModelById = async (req: Request, res: Response): Promise<
 export const createProductModel = async (req: Request, res: Response): Promise<void> => {
   try {
     await ensureProductSettingsTables();
-    const { brand_id, name, model_number, specifications, description, status, order_index } = req.body;
+    const { brand_id, name, model_number, specifications, description, key_features, status, order_index } = req.body;
     if (!brand_id) {
       res.status(400).json({ status: "error", message: "Please select a Brand" });
       return;
@@ -929,20 +947,27 @@ export const createProductModel = async (req: Request, res: Response): Promise<v
     }
 
     const [result]: any = await pool.query(`
-      INSERT INTO product_models (brand_id, name, model_number, specifications, description, status, order_index)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO product_models (brand_id, name, model_number, specifications, description, key_features, status, order_index)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       parseInt(brand_id, 10),
       name.trim(),
       model_number?.trim() || null,
       specifications?.trim() || null,
       description?.trim() || null,
+      key_features ? JSON.stringify(Array.isArray(key_features) ? key_features : [key_features]) : JSON.stringify([]),
       status || "active",
       order_index ? parseInt(order_index, 10) : 0,
     ]);
 
     const [created]: any = await pool.query(`SELECT * FROM product_models WHERE id = ?`, [result.insertId]);
-    res.status(201).json({ status: "success", message: "Model created successfully", data: created[0] });
+    const item = {
+      ...created[0],
+      key_features: created[0].key_features
+        ? (typeof created[0].key_features === "string" ? JSON.parse(created[0].key_features) : created[0].key_features)
+        : [],
+    };
+    res.status(201).json({ status: "success", message: "Model created successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to create model", error: error.message });
   }
@@ -950,8 +975,9 @@ export const createProductModel = async (req: Request, res: Response): Promise<v
 
 export const updateProductModel = async (req: Request, res: Response): Promise<void> => {
   try {
+    await ensureProductSettingsTables();
     const id = parseInt(req.params.id, 10);
-    const { brand_id, name, model_number, specifications, description, status, order_index } = req.body;
+    const { brand_id, name, model_number, specifications, description, key_features, status, order_index } = req.body;
 
     const [existing]: any = await pool.query(`SELECT id FROM product_models WHERE id = ?`, [id]);
     if (!existing.length) {
@@ -966,6 +992,7 @@ export const updateProductModel = async (req: Request, res: Response): Promise<v
           model_number = COALESCE(?, model_number),
           specifications = COALESCE(?, specifications),
           description = COALESCE(?, description),
+          key_features = COALESCE(?, key_features),
           status = COALESCE(?, status),
           order_index = COALESCE(?, order_index)
       WHERE id = ?
@@ -975,13 +1002,20 @@ export const updateProductModel = async (req: Request, res: Response): Promise<v
       model_number !== undefined ? model_number?.trim() || null : null,
       specifications !== undefined ? specifications?.trim() || null : null,
       description !== undefined ? description?.trim() || null : null,
+      key_features !== undefined ? JSON.stringify(Array.isArray(key_features) ? key_features : []) : null,
       status !== undefined ? status : null,
       order_index !== undefined ? parseInt(order_index, 10) : null,
       id,
     ]);
 
     const [updated]: any = await pool.query(`SELECT * FROM product_models WHERE id = ?`, [id]);
-    res.json({ status: "success", message: "Model updated successfully", data: updated[0] });
+    const item = {
+      ...updated[0],
+      key_features: updated[0].key_features
+        ? (typeof updated[0].key_features === "string" ? JSON.parse(updated[0].key_features) : updated[0].key_features)
+        : [],
+    };
+    res.json({ status: "success", message: "Model updated successfully", data: item });
   } catch (error: any) {
     res.status(500).json({ status: "error", message: "Failed to update model", error: error.message });
   }

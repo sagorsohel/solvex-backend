@@ -1,6 +1,6 @@
 -- Solvex Database Export
 -- Generated for Hostinger Deployment
--- Date: 2026-09-13T08:38:34.645Z
+-- Date: 2026-09-13T09:07:48.821Z
 
 SET FOREIGN_KEY_CHECKS=0;
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -240,6 +240,7 @@ CREATE TABLE `product_models` (
   `order_index` int NOT NULL DEFAULT '0',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `key_features` json DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_brand_id` (`brand_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -248,13 +249,13 @@ CREATE TABLE `product_models` (
 -- Dumping data for table `product_models` (7 rows)
 --
 
-INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`) VALUES (1, 1, 'MAX 100-125KTL3-X LV', 'MAX 125KTL3-X', '10 MPPTs, 98.8% Max Efficiency, IP66 protection, Type II SPD on DC & AC', 'Ideal for large C&I rooftop solar installations with high-current PV module support.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51');
-INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`) VALUES (1, 1, 'MID 40KTL3-X', 'MID 40KTL3-X', '4 MPPTs, 98.7% Max Efficiency, OLED display with touch button', 'Lightweight and high-yield commercial string inverter.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51');
-INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`) VALUES (1, 1, 'SPH 10000TL3 BH-UP', 'SPH10000TL3', '10kW Three-Phase Hybrid, UPS-grade 10ms seamless transfer, 100% unbalanced output', 'Top-tier hybrid inverter for critical industrial and healthcare backup loads.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51');
-INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`) VALUES (1, 1, 'SUN2000-100KTL-M2', 'SUN2000-100KTL-M2', '100 kW High-efficiency smart string inverter, 10 MPPTs, AFCI powered by AI', 'Intelligent PV inverter with smart IV curve diagnosis and active arc fault prevention.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51');
-INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`) VALUES (1, 1, 'SUN2000-50KTL-M3', 'SUN2000-50KTL-M3', '50 kW Smart PV controller, 4 MPPTs, IP66 waterproof and dustproof', 'Commercial rooftop inverter optimized for Bangladesh climate conditions.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51');
-INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`) VALUES (1, 1, 'Hi-MO 6 Explorer', 'LR5-72HTH-585M', '585W Monofacial HPBC Cell Module, 22.6% efficiency, 25-yr product warranty', 'Aesthetic and ultra-high efficiency module for distributed commercial rooftops.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51');
-INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`) VALUES (1, 1, 'Hi-MO 7 Bifacial Dual-Glass', 'LR5-72HGD-610M', '610W Bifacial Dual-Glass Module, HPB 2.0 cell technology, up to 80% bifaciality', 'Ground-mount and open industrial rooftop solar with maximum energy yield.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51');
+INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`, `key_features`) VALUES (1, 1, 'MAX 100-125KTL3-X LV', 'MAX 125KTL3-X', 'Test specs', 'Test desc', 'active', 0, '2026-09-12 18:56:51', '2026-09-13 09:06:18', '["Feature A","Feature B"]');
+INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`, `key_features`) VALUES (1, 1, 'MID 40KTL3-X', 'MID 40KTL3-X', '4 MPPTs, 98.7% Max Efficiency, OLED display with touch button', 'Lightweight and high-yield commercial string inverter.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51', NULL);
+INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`, `key_features`) VALUES (1, 1, 'SPH 10000TL3 BH-UP', 'SPH10000TL3', '10kW Three-Phase Hybrid, UPS-grade 10ms seamless transfer, 100% unbalanced output', 'Top-tier hybrid inverter for critical industrial and healthcare backup loads.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51', NULL);
+INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`, `key_features`) VALUES (1, 1, 'SUN2000-100KTL-M2', 'SUN2000-100KTL-M2', '100 kW High-efficiency smart string inverter, 10 MPPTs, AFCI powered by AI', 'Intelligent PV inverter with smart IV curve diagnosis and active arc fault prevention.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51', NULL);
+INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`, `key_features`) VALUES (1, 1, 'SUN2000-50KTL-M3', 'SUN2000-50KTL-M3', '50 kW Smart PV controller, 4 MPPTs, IP66 waterproof and dustproof', 'Commercial rooftop inverter optimized for Bangladesh climate conditions.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51', NULL);
+INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`, `key_features`) VALUES (1, 1, 'Hi-MO 6 Explorer', 'LR5-72HTH-585M', '585W Monofacial HPBC Cell Module, 22.6% efficiency, 25-yr product warranty', 'Aesthetic and ultra-high efficiency module for distributed commercial rooftops.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51', NULL);
+INSERT INTO `product_models` (`id`, `brand_id`, `name`, `model_number`, `specifications`, `description`, `status`, `order_index`, `created_at`, `updated_at`, `key_features`) VALUES (1, 1, 'Hi-MO 7 Bifacial Dual-Glass', 'LR5-72HGD-610M', '610W Bifacial Dual-Glass Module, HPB 2.0 cell technology, up to 80% bifaciality', 'Ground-mount and open industrial rooftop solar with maximum energy yield.', 'active', 1, '2026-09-12 18:56:51', '2026-09-12 18:56:51', NULL);
 
 --
 -- Table structure for table `product_sub_categories`
