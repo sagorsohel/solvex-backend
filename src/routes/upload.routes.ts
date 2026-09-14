@@ -130,9 +130,11 @@ const uploadToImageStorage = async (
 
   try {
     const fileBuffer = fs.readFileSync(filePath);
-    const blob = new Blob([fileBuffer], { type: mimetype || "image/jpeg" });
+    const blob = new Blob([fileBuffer], { type: mimetype || "application/octet-stream" });
     const formData = new FormData();
     formData.append("image", blob, originalName);
+    formData.append("file", blob, originalName);
+    formData.append("pdf", blob, originalName);
 
     const response = await fetch(`${serviceUrl}/api/upload`, {
       method: "POST",
@@ -155,7 +157,7 @@ const uploadToImageStorage = async (
 /**
  * POST /api/upload
  * Upload a single image or PDF document.
- * Automatically uploads to Solvex Image Storage (https://image.solvexgloballtd.com),
+ * Automatically uploads to Solvex Storage (https://image.solvexgloballtd.com),
  * or Cloudinary if configured in .env, otherwise saves to persistent disk storage (UPLOADS_DIR).
  */
 router.post("/", uploadSingle, async (req: Request, res: Response) => {
@@ -169,40 +171,38 @@ router.post("/", uploadSingle, async (req: Request, res: Response) => {
     });
   }
 
-  const isPdf = uploadedFile.mimetype === "application/pdf" || uploadedFile.originalname.endsWith(".pdf");
+  const isPdf = uploadedFile.mimetype === "application/pdf" || uploadedFile.originalname.toLowerCase().endsWith(".pdf");
 
-  // 1. Upload images to dedicated Solvex Image Storage microservice (https://image.solvexgloballtd.com)
-  if (!isPdf) {
-    try {
-      const storageResult = await uploadToImageStorage(
-        uploadedFile.path,
-        uploadedFile.originalname,
-        uploadedFile.mimetype
-      );
+  // 1. Upload files (images and PDFs) to dedicated Solvex Storage microservice (https://image.solvexgloballtd.com)
+  try {
+    const storageResult = await uploadToImageStorage(
+      uploadedFile.path,
+      uploadedFile.originalname,
+      uploadedFile.mimetype
+    );
 
-      if (storageResult.success && storageResult.url) {
-        // Remove local temporary file after successful cloud upload
-        try {
-          fs.unlinkSync(uploadedFile.path);
-        } catch (_) {}
+    if (storageResult.success && storageResult.url) {
+      // Remove local temporary file after successful cloud upload
+      try {
+        fs.unlinkSync(uploadedFile.path);
+      } catch (_) {}
 
-        return res.status(201).json({
-          success: true,
-          message: "File uploaded successfully to permanent Solvex Image Storage",
-          url: storageResult.url,
-          relativeUrl: storageResult.url,
-          filename: storageResult.filename,
-          originalName: uploadedFile.originalname,
-          mimetype: "image/webp",
-          size: uploadedFile.size,
-          provider: "image-storage",
-        });
-      } else {
-        console.warn("Image storage upload failed, falling back to local/Cloudinary storage:", storageResult.error);
-      }
-    } catch (imgStorageErr: any) {
-      console.error("Image storage exception, falling back:", imgStorageErr?.message);
+      return res.status(201).json({
+        success: true,
+        message: "File uploaded successfully to permanent Solvex Storage (https://image.solvexgloballtd.com)",
+        url: storageResult.url,
+        relativeUrl: storageResult.url,
+        filename: storageResult.filename,
+        originalName: uploadedFile.originalname,
+        mimetype: isPdf ? "application/pdf" : (uploadedFile.mimetype || "image/webp"),
+        size: uploadedFile.size,
+        provider: "image-storage",
+      });
+    } else {
+      console.warn("Solvex image/storage upload failed, falling back to local/Cloudinary storage:", storageResult.error);
     }
+  } catch (imgStorageErr: any) {
+    console.error("Image storage exception, falling back:", imgStorageErr?.message);
   }
 
   // 1. If Cloudinary is enabled, upload to Cloudinary for 100% permanent cloud hosting
