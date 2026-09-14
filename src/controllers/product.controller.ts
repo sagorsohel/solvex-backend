@@ -69,9 +69,35 @@ export const getProducts = async (req: AuthenticatedRequest, res: Response): Pro
   try {
     await ensureProductsColumns();
 
+    const includeDesc = req.query.include_description === "true";
+
     const [rows]: any = await pool.query(`
       SELECT 
-        p.*,
+        p.id,
+        p.title,
+        p.category,
+        p.price,
+        p.stock,
+        p.status,
+        p.image,
+        p.created_at,
+        p.updated_at,
+        p.slug,
+        p.sister_concern_id,
+        p.product_category_id,
+        p.product_sub_category_id,
+        p.product_tree_category_id,
+        p.product_brand_id,
+        p.product_model_id,
+        p.sku,
+        p.features,
+        p.is_featured,
+        p.gallery_images,
+        p.datasheet_pdf,
+        p.datasheet_specs,
+        p.brochures,
+        p.translations,
+        ${includeDesc ? "p.description," : "SUBSTRING(p.description, 1, 300) AS short_description,"}
         sc.name AS sister_concern_name,
         sc.code AS sister_concern_code,
         pc.name AS category_name,
