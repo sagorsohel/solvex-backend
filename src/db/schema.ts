@@ -35,6 +35,7 @@ export const products = mysqlTable("products", {
   datasheetSpecs: json("datasheet_specs").$type<Array<{ id: string; key: string; hasValues: boolean; values: [string, string, string] }>>(),
   brochures: json("brochures").$type<Array<{ id: string; title: string; pdfUrl: string; fileSize?: string }>>(),
   isFeatured: boolean("is_featured").default(false).notNull(),
+  isUpcoming: boolean("is_upcoming").default(false).notNull(),
   translations: json("translations").$type<{ bn?: { title?: string; description?: string; features?: string[] } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),

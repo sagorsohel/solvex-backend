@@ -27,6 +27,7 @@ export const ensureProductsColumns = async () => {
       { name: "sku", definition: "VARCHAR(100) NULL" },
       { name: "features", definition: "JSON NULL" },
       { name: "is_featured", definition: "TINYINT(1) DEFAULT 0 NOT NULL" },
+      { name: "is_upcoming", definition: "TINYINT(1) DEFAULT 0 NOT NULL" },
       { name: "gallery_images", definition: "JSON NULL" },
       { name: "datasheet_pdf", definition: "VARCHAR(500) NULL" },
       { name: "datasheet_specs", definition: "JSON NULL" },
@@ -92,6 +93,7 @@ export const getProducts = async (req: AuthenticatedRequest, res: Response): Pro
         p.sku,
         p.features,
         p.is_featured,
+        p.is_upcoming,
         p.gallery_images,
         p.datasheet_pdf,
         p.datasheet_specs,
@@ -125,6 +127,7 @@ export const getProducts = async (req: AuthenticatedRequest, res: Response): Pro
       brochures: safeJsonParse(row.brochures, []),
       translations: safeJsonParse(row.translations, {}),
       is_featured: Boolean(row.is_featured),
+      is_upcoming: Boolean(row.is_upcoming),
     }));
 
     res.json({ success: true, data: formatted });
@@ -179,6 +182,7 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
       brochures: safeJsonParse(row.brochures, []),
       translations: safeJsonParse(row.translations, {}),
       is_featured: Boolean(row.is_featured),
+      is_upcoming: Boolean(row.is_upcoming),
     };
 
     res.json({ success: true, data: product });
@@ -261,6 +265,7 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
       datasheet_specs,
       brochures,
       is_featured,
+      is_upcoming,
       translations,
     } = req.body;
 
@@ -293,14 +298,17 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
       }
     }
 
+    const isUpcomingBool = Boolean(is_upcoming);
+    const finalStock = isUpcomingBool ? 0 : (Number(stock) || 0);
+
     const [result]: any = await pool.query(
       `
       INSERT INTO products (
         title, slug, category, sister_concern_id, product_category_id,
         product_sub_category_id, product_tree_category_id, product_brand_id,
         product_model_id, sku, price, stock, status, features,
-        description, image, gallery_images, datasheet_pdf, datasheet_specs, brochures, is_featured, translations
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        description, image, gallery_images, datasheet_pdf, datasheet_specs, brochures, is_featured, is_upcoming, translations
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       [
         title,
@@ -314,7 +322,7 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
         product_model_id ? Number(product_model_id) : null,
         finalSku,
         price ? price.toString() : "0.00",
-        Number(stock) || 0,
+        finalStock,
         status || "published",
         featuresJson,
         description || null,
@@ -324,6 +332,7 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
         datasheetSpecsJson,
         brochuresJson,
         is_featured ? 1 : 0,
+        isUpcomingBool ? 1 : 0,
         translationsJson,
       ]
     );
@@ -333,7 +342,7 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
         userId: req.user?.id || 1,
         userName: req.user?.name || "Admin",
         action: `Created Product: ${title}`,
-        details: `ID: ${result.insertId}, Category: ${resolvedCategory}, Stock: ${stock || 0}`,
+        details: `ID: ${result.insertId}, Category: ${resolvedCategory}, Stock: ${finalStock}, Upcoming: ${isUpcomingBool}`,
         ipAddress: req.ip || "127.0.0.1",
       });
     } catch (_) {}
@@ -375,6 +384,7 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
       datasheet_specs,
       brochures,
       is_featured,
+      is_upcoming,
       translations,
     } = req.body;
 
@@ -389,6 +399,8 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
     const datasheetSpecsJson = Array.isArray(datasheet_specs) ? JSON.stringify(datasheet_specs) : undefined;
     const brochuresJson = Array.isArray(brochures) ? JSON.stringify(brochures) : undefined;
     const translationsJson = translations !== undefined ? JSON.stringify(translations) : undefined;
+
+    const resolvedStock = is_upcoming === true ? 0 : (stock !== undefined ? Number(stock) : undefined);
 
     await pool.query(
       `
@@ -414,6 +426,7 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
         datasheet_specs = COALESCE(?, datasheet_specs),
         brochures = COALESCE(?, brochures),
         is_featured = ?,
+        is_upcoming = COALESCE(?, is_upcoming),
         translations = COALESCE(?, translations)
       WHERE id = ?
     `,
@@ -429,7 +442,7 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
         product_model_id ? Number(product_model_id) : null,
         sku || null,
         price !== undefined ? price.toString() : null,
-        stock !== undefined ? Number(stock) : null,
+        resolvedStock !== undefined ? resolvedStock : null,
         status || null,
         featuresJson || null,
         description !== undefined ? description : null,
@@ -439,6 +452,7 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
         datasheetSpecsJson || null,
         brochuresJson || null,
         is_featured ? 1 : 0,
+        is_upcoming !== undefined ? (is_upcoming ? 1 : 0) : null,
         translationsJson !== undefined ? translationsJson : null,
         Number(id),
       ]
