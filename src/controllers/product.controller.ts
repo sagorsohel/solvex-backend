@@ -136,7 +136,8 @@ export const getProducts = async (req: AuthenticatedRequest, res: Response): Pro
 export const getProductById = async (req: Request, res: Response): Promise<void> => {
   try {
     await ensureProductsColumns();
-    const { id } = req.params;
+    const rawId = String(req.params.id || "").trim();
+    const isNumeric = /^\d+$/.test(rawId);
 
     const [rows]: any = await pool.query(
       `
@@ -158,10 +159,10 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
       LEFT JOIN product_tree_categories ptc ON p.product_tree_category_id = ptc.id
       LEFT JOIN product_brands pb ON p.product_brand_id = pb.id
       LEFT JOIN product_models pm ON p.product_model_id = pm.id
-      WHERE p.id = ?
+      WHERE ${isNumeric ? "p.id = ?" : "p.slug = ? OR p.id = ?"}
       LIMIT 1
     `,
-      [Number(id)]
+      isNumeric ? [Number(rawId)] : [rawId, 0]
     );
 
     if (!rows || rows.length === 0) {
