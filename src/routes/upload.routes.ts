@@ -125,8 +125,8 @@ const uploadToImageStorage = async (
   originalName: string,
   mimetype: string
 ): Promise<{ success: boolean; url?: string; filename?: string; error?: string }> => {
-  const serviceUrl = (process.env.IMAGE_STORAGE_URL || "https://image.solvexgloballtd.com").replace(/\/+$/, "");
-  const apiKey = process.env.IMAGE_STORAGE_API_KEY || "solvex_img_sec_9f82a1c4e7b309d5a8e2b1c6f4d0a3e8";
+  const serviceUrl = "https://image.solvexgloballtd.com";
+  const apiKey = "solvex_img_sec_9f82a1c4e7b309d5a8e2b1c6f4d0a3e8";
 
   try {
     const fileBuffer = fs.readFileSync(filePath);
