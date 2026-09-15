@@ -132,9 +132,7 @@ const uploadToImageStorage = async (
     const fileBuffer = fs.readFileSync(filePath);
     const blob = new Blob([fileBuffer], { type: mimetype || "application/octet-stream" });
     const formData = new FormData();
-    formData.append("image", blob, originalName);
     formData.append("file", blob, originalName);
-    formData.append("pdf", blob, originalName);
 
     const response = await fetch(`${serviceUrl}/api/upload`, {
       method: "POST",
