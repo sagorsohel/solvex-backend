@@ -153,62 +153,6 @@ router.get("/solution-categories", async (_req: Request, res: Response) => {
 });
 
 /**
- * GET /api/testimonials
- * Client testimonials retrieved from homepage settings or database
- */
-router.get("/testimonials", async (_req: Request, res: Response) => {
-  try {
-    const [rows]: any = await pool.query("SELECT testimonial_section FROM homepage_settings LIMIT 1");
-    let testData: any[] = [];
-
-    if (rows && rows.length > 0 && rows[0].testimonial_section) {
-      const raw = rows[0].testimonial_section;
-      testData = typeof raw === "string" ? JSON.parse(raw) : raw;
-    }
-
-    if (!Array.isArray(testData) || testData.length === 0) {
-      testData = [
-        {
-          id: 1,
-          name: "Ahmed Kabir",
-          company: "Apex Spinning & Weaving Mills",
-          role: "Director of Plant Operations",
-          content: "Solvex deployed our 1.2MW rooftop solar array with absolute precision. Our daytime diesel generator run-time dropped by 75%, and the ROI has exceeded all initial projections.",
-          avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
-          rating: 5,
-        },
-        {
-          id: 2,
-          name: "Engr. Farhana Chowdhury",
-          company: "CareMed Specialist Hospital",
-          role: "Chief Medical Systems Engineer",
-          content: "The pure sine wave medical UPS and BESS setup engineered by Solvex gives our operating theaters 100% reliable power continuity with zero transfer glitch.",
-          avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200",
-          rating: 5,
-        },
-      ];
-    }
-
-    const formatted = testData.map((t: any, idx: number) => ({
-      id: t.id || idx + 1,
-      stars: t.rating || t.stars || 5,
-      quote: t.content || t.quote || "",
-      avatar: t.avatar || "",
-      name: t.name || "",
-      designation_and_company: t.role ? `${t.role}, ${t.company}` : (t.company || t.designation_and_company || ""),
-      display_in_website: true,
-    }));
-
-    return res.json({
-      status: "success",
-      data: formatted,
-    });
-  } catch (err: any) {
-    return res.json({ status: "success", data: [] });
-  }
-});
-
-/**
  * POST /api/consultations
  * Consultation inquiries from footer or solutions consultation card
  */

@@ -28,10 +28,12 @@ import solutionsRoutes from "./routes/solutions.routes.js";
 import translateRoutes from "./routes/translate.routes.js";
 import blogsRouter from "./routes/blog.routes.js";
 import siteSettingsRoutes from "./routes/site-settings.routes.js";
+import testimonialsRouter from "./routes/testimonials.routes.js";
 import { testDbConnection, pool } from "./db/index.js";
 import { ensureProductsColumns } from "./controllers/product.controller.js";
 import { ensureBlogTable } from "./controllers/blog.controller.js";
 import { ensureSiteSettingsTable } from "./controllers/site-settings.controller.js";
+import { ensureTestimonialsTable } from "./controllers/testimonials.controller.js";
 import path from "path";
 
 dotenv.config();
@@ -101,6 +103,7 @@ app.use("/api/services-page", servicesPageRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/project-categories", projectCategoriesRouter);
 app.use("/api/projects-page", projectsPageRouter);
+app.use("/api/testimonials", testimonialsRouter);
 app.use("/api", solutionsRoutes);
 
 // Products Settings & Sister Concerns Hierarchy Routes
@@ -134,6 +137,7 @@ const server = app.listen(PORT, async () => {
   await ensureProductsColumns();
   await ensureBlogTable();
   await ensureSiteSettingsTable();
+  await ensureTestimonialsTable();
 
   // Sync any existing legacy images from ./uploads to persistent uploadsDir
   if (uploadsDir !== localUploadsDir && fs.existsSync(localUploadsDir)) {

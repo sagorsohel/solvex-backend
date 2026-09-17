@@ -439,3 +439,22 @@ export const siteSettings = mysqlTable("site_settings", {
 
 export type SiteSettings = typeof siteSettings.$inferSelect;
 export type NewSiteSettings = typeof siteSettings.$inferInsert;
+
+// Dedicated Client Testimonials Collection
+export const testimonials = mysqlTable("testimonials", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 191 }).notNull(),
+  company: varchar("company", { length: 191 }),
+  role: varchar("role", { length: 191 }),
+  content: text("content").notNull(),
+  rating: int("rating").default(5).notNull(),
+  avatar: varchar("avatar", { length: 500 }),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Testimonial = typeof testimonials.$inferSelect;
+export type NewTestimonial = typeof testimonials.$inferInsert;
+
