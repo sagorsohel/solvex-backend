@@ -381,4 +381,61 @@ export const blogs = mysqlTable("blogs", {
 export type Blog = typeof blogs.$inferSelect;
 export type NewBlog = typeof blogs.$inferInsert;
 
+// 8. Site Settings (Header, Footer, Contact & Social Links CMS)
+export const siteSettings = mysqlTable("site_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  contactPhone: varchar("contact_phone", { length: 100 }).default("+1 (952) 435-7106"),
+  contactEmail: varchar("contact_email", { length: 150 }).default("info@solvexglobal.com"),
+  supportEmail: varchar("support_email", { length: 150 }).default("help@solvexglobal.com"),
+  address: varchar("address", { length: 255 }).default("12 Division Park, SKY 12546, Berlin"),
+  workingHours: varchar("working_hours", { length: 255 }).default("Mon - Fri 8:00 - 18:00 / Sun 8:00 - 14:00"),
+  socialLinks: json("social_links").$type<{
+    facebook?: string;
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+    linkedin?: string;
+    whatsapp?: string;
+  }>(),
+  headerSettings: json("header_settings").$type<{
+    topbarVisible?: boolean;
+    workingHours?: string;
+    address?: string;
+    email?: string;
+    phone?: string;
+    followUsLabel?: string;
+  }>(),
+  footerSettings: json("footer_settings").$type<{
+    aboutTitle?: string;
+    aboutDescription?: string;
+    logo?: string;
+    usefulLinksTitle?: string;
+    usefulLinks?: Array<{ title: string; url: string; openInNewTab?: boolean }>;
+    servicesTitle?: string;
+    servicesLinks?: Array<{ title: string; url: string; openInNewTab?: boolean }>;
+    contactTitle?: string;
+    copyrightText?: string;
+    galleryTitle?: string;
+    galleryImages?: Array<{ image: string; link?: string; alt?: string }>;
+    bottomLinks?: Array<{ title: string; url: string }>;
+  }>(),
+  translations: json("translations").$type<{
+    bn?: {
+      address?: string;
+      workingHours?: string;
+      aboutDescription?: string;
+      followUsLabel?: string;
+      usefulLinksTitle?: string;
+      servicesTitle?: string;
+      contactTitle?: string;
+      galleryTitle?: string;
+      copyrightText?: string;
+      usefulLinks?: Array<{ title: string; url: string }>;
+      servicesLinks?: Array<{ title: string; url: string }>;
+    };
+  }>(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
 
+export type SiteSettings = typeof siteSettings.$inferSelect;
+export type NewSiteSettings = typeof siteSettings.$inferInsert;
