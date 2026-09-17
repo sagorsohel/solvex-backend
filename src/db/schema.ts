@@ -105,6 +105,12 @@ export const homepageSettings = mysqlTable("homepage_settings", {
   solutionsSection: json("solutions_section").$type<any>(),
   faqSection: json("faq_section").$type<any>(),
   testimonialSection: json("testimonial_section").$type<any>(),
+  servicesHeader: json("services_header").$type<any>(),
+  boardOfDirectorsSection: json("board_of_directors_section").$type<any>(),
+  projectsSection: json("projects_section").$type<any>(),
+  sisterConcernSection: json("sister_concern_section").$type<any>(),
+  productsSection: json("products_section").$type<any>(),
+  newsAndBlogSection: json("news_and_blog_section").$type<any>(),
   sectionVisibility: json("section_visibility").$type<any>(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -228,7 +234,7 @@ export type ProjectsPageSetting = typeof projectsPageSettings.$inferSelect;
 export const sisterConcerns = mysqlTable("sister_concerns", {
   id: int("id").primaryKey().autoincrement(),
   name: varchar("name", { length: 191 }).notNull(),
-  code: varchar("50", { length: 50 }),
+  code: varchar("code", { length: 50 }),
   description: text("description"),
   logo: varchar("logo", { length: 500 }),
   website: varchar("website", { length: 255 }),
@@ -332,5 +338,47 @@ export type NewProductBrand = typeof productBrands.$inferInsert;
 
 export type ProductModel = typeof productModels.$inferSelect;
 export type NewProductModel = typeof productModels.$inferInsert;
+
+// 7. Blogs & Articles Table
+export const blogs = mysqlTable("blogs", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  coverImage: varchar("cover_image", { length: 500 }),
+  category: varchar("category", { length: 100 }).default("Solar Technology").notNull(),
+  tags: json("tags").$type<string[]>(),
+  excerpt: text("excerpt"),
+  description: text("description"), // Rich HTML Content from Quill
+  authorName: varchar("author_name", { length: 100 }).default("Solvex Editorial Team").notNull(),
+  authorRole: varchar("author_role", { length: 100 }).default("Renewable Energy Specialist").notNull(),
+  authorAvatar: varchar("author_avatar", { length: 500 }),
+  readTime: varchar("read_time", { length: 50 }).default("4 min read").notNull(),
+  status: mysqlEnum("status", ["published", "draft", "archived"]).default("published").notNull(),
+  isFeatured: boolean("is_featured").default(false).notNull(),
+  viewsCount: int("views_count").default(0).notNull(),
+  seoTitle: varchar("seo_title", { length: 255 }),
+  seoDescription: text("seo_description"),
+  seoKeywords: text("seo_keywords"),
+  ogImage: varchar("og_image", { length: 500 }),
+  translations: json("translations").$type<{
+    bn?: {
+      title?: string;
+      excerpt?: string;
+      description?: string;
+      category?: string;
+      tags?: string[];
+      authorName?: string;
+      authorRole?: string;
+      seoTitle?: string;
+      seoDescription?: string;
+    };
+  }>(),
+  publishedAt: timestamp("published_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Blog = typeof blogs.$inferSelect;
+export type NewBlog = typeof blogs.$inferInsert;
 
 

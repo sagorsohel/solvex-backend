@@ -19,10 +19,30 @@ export const ensureHomepageTable = async (): Promise<void> => {
         solutions_section JSON,
         faq_section JSON,
         testimonial_section JSON,
+        services_header JSON,
+        board_of_directors_section JSON,
+        projects_section JSON,
+        sister_concern_section JSON,
+        products_section JSON,
         section_visibility JSON,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // Ensure columns exist on already created tables
+    const extraCols = [
+      "services_header",
+      "board_of_directors_section",
+      "projects_section",
+      "sister_concern_section",
+      "products_section",
+      "news_and_blog_section",
+    ];
+    for (const col of extraCols) {
+      try {
+        await pool.query(`ALTER TABLE homepage_settings ADD COLUMN ${col} JSON`);
+      } catch (_) {}
+    }
   } catch (err) {
     console.error("Error creating homepage_settings table:", err);
   }
@@ -123,8 +143,17 @@ export const defaultHomepageData = {
   ],
   why_choose_us_section: {
     tag: "THE SOLVEX ADVANTAGE",
+    small_title: "WHY CHOOSE US",
     title: "Engineered for Uncompromising Performance",
+    big_title: "Engineered for Uncompromising Performance",
+    subtitle: "Pioneering clean energy EPC solutions with rigorous environmental stress testing",
+    big_style_title: "",
     description: "Every megawatt we engineer is backed by rigorous environmental stress testing, high-grade Tier-1 bill of materials, and guaranteed service level agreements.",
+    image: "/why_choose_us_solar.png",
+    badge_number: "15+",
+    badge_label: "Years",
+    badge_title: "Years of Excellence",
+    badge_subtitle: "Pioneering clean energy EPC solutions",
     metrics: [
       { id: "m-1", label: "Energy Cost Reduction", percentage: 92 },
       { id: "m-2", label: "Hardware Efficiency Rate", percentage: 98 },
@@ -133,7 +162,11 @@ export const defaultHomepageData = {
   },
   working_process_section: {
     tag: "STREAMLINED EXECUTION",
+    small_title: "STREAMLINED EXECUTION",
     title: "Our 4-Step Engineering Lifecycle",
+    big_title: "Our 4-Step Engineering Lifecycle",
+    subtitle: "",
+    big_style_title: "",
     description: "From solar irradiation feasibility studies to lifetime telemetry monitoring, we ensure zero operational bottlenecks.",
     steps: [
       {
@@ -167,6 +200,49 @@ export const defaultHomepageData = {
     big_title: "Tailored Clean Energy Solutions",
     description: "Explore our specialized divisions built to address every scale of energy demand.",
   },
+  services_header: {
+    badge: "OUR CORE SERVICES",
+    small_title: "OUR CORE SERVICES",
+    title: "High-Performance Solar Solutions",
+    big_title: "High-Performance Solar Solutions",
+    subtitle: "Engineered for Maximum Industrial & Commercial Efficiency",
+    description: "Delivering tier-1 solar photovoltaic panels, smart energy storage systems, and comprehensive microgrid solutions.",
+  },
+  board_of_directors_section: {
+    badge: "OUR GOVERNANCE & LEADERSHIP",
+    small_title: "OUR GOVERNANCE & LEADERSHIP",
+    title: "Board of Directors",
+    big_title: "Board of Directors",
+    subtitle: "Executive Leadership",
+    big_style_title: "Executive Leadership",
+    description: "Steered by seasoned clean tech visionaries, utility power system engineers, and sustainable finance experts.",
+  },
+  projects_section: {
+    badge: "CASE STUDY & PROJECTS",
+    small_title: "CASE STUDY & PROJECTS",
+    title: "Featured Clean Energy Deployments",
+    big_title: "Featured Clean Energy Deployments",
+    subtitle: "Utility-Scale & Commercial Solar Installations",
+    big_style_title: "Utility-Scale & Commercial Solar Installations",
+    description: "Explore our commissioned solar installations, rooftop arrays, and industrial microgrids across Bangladesh.",
+  },
+  sister_concern_section: {
+    badge: "STRATEGIC DIVISIONS & CONCERNS",
+    small_title: "STRATEGIC DIVISIONS & CONCERNS",
+    title: "Operating Entities of Solvex Global",
+    big_title: "Operating Entities of Solvex Global",
+    subtitle: "Specialized subsidiaries delivering EPC and water engineering solutions",
+    description: "Pioneering industrial renewable power, utility EPC systems, and advanced clean tech across Bangladesh.",
+  },
+  products_section: {
+    badge: "PRODUCT DIVISIONS",
+    small_title: "PRODUCT DIVISIONS",
+    title: "Solar Care International & Clean Tech Hardware",
+    big_title: "Solar Care International & Clean Tech Hardware",
+    subtitle: "Certified Clean Energy Equipment & Inverters",
+    big_style_title: "Certified Clean Energy Equipment & Inverters",
+    description: "High-yield commercial and industrial inverters, TOPCon dual-glass solar panels, and modular LiFePO4 batteries.",
+  },
   faq_section: [
     {
       id: "faq-1",
@@ -189,26 +265,44 @@ export const defaultHomepageData = {
       answer: "Most commercial and industrial rooftop solar systems achieve full capital expenditure payback within 3.5 to 5 years, providing free clean electricity for the remaining 20+ years of panel operational life.",
     },
   ],
-  testimonial_section: [
-    {
-      id: "test-1",
-      name: "Ahmed Kabir",
-      company: "Apex Spinning & Weaving Mills",
-      role: "Director of Plant Operations",
-      content: "Solvex deployed our 1.2MW rooftop solar array with absolute precision. Our daytime diesel generator run-time dropped by 75%, and the ROI has exceeded all initial projections.",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
-      rating: 5,
-    },
-    {
-      id: "test-2",
-      name: "Engr. Farhana Chowdhury",
-      company: "CareMed Specialist Hospital",
-      role: "Chief Medical Systems Engineer",
-      content: "The pure sine wave medical UPS and BESS setup engineered by Solvex gives our operating theaters 100% reliable power continuity with zero transfer glitch.",
-      avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200",
-      rating: 5,
-    },
-  ],
+  testimonial_section: {
+    small_title: "CLIENT TESTIMONIALS",
+    badge: "CLIENT TESTIMONIALS",
+    big_title: "Trusted By Clean Energy Partners",
+    title: "Trusted By Clean Energy Partners",
+    big_style_title: "Client Testimonials & Industry Reviews",
+    subtitle: "Client Testimonials & Industry Reviews",
+    description: "Read how Solvex Global empowers utility operators and industrial facilities worldwide.",
+    items: [
+      {
+        id: "test-1",
+        name: "Ahmed Kabir",
+        company: "Apex Spinning & Weaving Mills",
+        role: "Director of Plant Operations",
+        content: "Solvex deployed our 1.2MW rooftop solar array with absolute precision. Our daytime diesel generator run-time dropped by 75%, and the ROI has exceeded all initial projections.",
+        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
+        rating: 5,
+      },
+      {
+        id: "test-2",
+        name: "Engr. Farhana Chowdhury",
+        company: "CareMed Specialist Hospital",
+        role: "Chief Medical Systems Engineer",
+        content: "The pure sine wave medical UPS and BESS setup engineered by Solvex gives our operating theaters 100% reliable power continuity with zero transfer glitch.",
+        avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200",
+        rating: 5,
+      },
+    ],
+  },
+  news_and_blog_section: {
+    badge: "NEWS & INSIGHTS",
+    small_title: "NEWS & BLOG",
+    title: "Our Latest News & Insights",
+    big_title: "Our Latest News & Insights",
+    subtitle: "Clean Tech Trends & Industry Analysis",
+    big_style_title: "Clean Tech Trends & Industry Analysis",
+    description: "Stay updated with latest renewable engineering breakthroughs, solar regulations, and green technology whitepapers.",
+  },
   section_visibility: {
     hero_slider: true,
     roi_calculator: true,
@@ -237,19 +331,59 @@ export const getHomepage = async (_req: Request, res: Response): Promise<void> =
 
     if (rows && rows.length > 0) {
       const s = rows[0];
+      const parseJson = (val: any, fallback: any) => {
+        if (!val) return fallback;
+        if (typeof val === "string") {
+          try {
+            return JSON.parse(val);
+          } catch (_) {
+            return fallback;
+          }
+        }
+        return val;
+      };
+
+      let faqSection = parseJson(s.faq_section, defaultHomepageData.faq_section);
+      if (Array.isArray(faqSection)) {
+        faqSection = {
+          badge: "FAQ'S",
+          title: "Frequently Asked Questions",
+          subtitle: "Everything You Need to Know About Solar EPC & BESS",
+          description: "Find answers to common questions regarding technical feasibility, installation, warranties, and ROI.",
+          questions: faqSection,
+        };
+      }
+
+      let testimonialSection = parseJson(s.testimonial_section, defaultHomepageData.testimonial_section);
+      if (Array.isArray(testimonialSection)) {
+        testimonialSection = {
+          badge: "CLIENT TESTIMONIALS",
+          title: "Trusted By Clean Energy Partners",
+          subtitle: "Client Testimonials & Industry Reviews",
+          description: "Read how Solvex Global empowers utility operators and industrial facilities worldwide.",
+          items: testimonialSection,
+        };
+      }
+
       const data = {
         id: s.id,
-        slider_section: s.slider_section ? (typeof s.slider_section === "string" ? JSON.parse(s.slider_section) : s.slider_section) : defaultHomepageData.slider_section,
-        service_cards: s.service_cards ? (typeof s.service_cards === "string" ? JSON.parse(s.service_cards) : s.service_cards) : defaultHomepageData.service_cards,
-        running_text: s.running_text ? (typeof s.running_text === "string" ? JSON.parse(s.running_text) : s.running_text) : defaultHomepageData.running_text,
-        about_section: s.about_section ? (typeof s.about_section === "string" ? JSON.parse(s.about_section) : s.about_section) : defaultHomepageData.about_section,
-        counter_section: s.counter_section ? (typeof s.counter_section === "string" ? JSON.parse(s.counter_section) : s.counter_section) : defaultHomepageData.counter_section,
-        why_choose_us_section: s.why_choose_us_section ? (typeof s.why_choose_us_section === "string" ? JSON.parse(s.why_choose_us_section) : s.why_choose_us_section) : defaultHomepageData.why_choose_us_section,
-        working_process_section: s.working_process_section ? (typeof s.working_process_section === "string" ? JSON.parse(s.working_process_section) : s.working_process_section) : defaultHomepageData.working_process_section,
-        solutions_section: s.solutions_section ? (typeof s.solutions_section === "string" ? JSON.parse(s.solutions_section) : s.solutions_section) : defaultHomepageData.solutions_section,
-        faq_section: s.faq_section ? (typeof s.faq_section === "string" ? JSON.parse(s.faq_section) : s.faq_section) : defaultHomepageData.faq_section,
-        testimonial_section: s.testimonial_section ? (typeof s.testimonial_section === "string" ? JSON.parse(s.testimonial_section) : s.testimonial_section) : defaultHomepageData.testimonial_section,
-        section_visibility: s.section_visibility ? (typeof s.section_visibility === "string" ? JSON.parse(s.section_visibility) : s.section_visibility) : defaultHomepageData.section_visibility,
+        slider_section: parseJson(s.slider_section, defaultHomepageData.slider_section),
+        service_cards: parseJson(s.service_cards, defaultHomepageData.service_cards),
+        running_text: parseJson(s.running_text, defaultHomepageData.running_text),
+        about_section: parseJson(s.about_section, defaultHomepageData.about_section),
+        counter_section: parseJson(s.counter_section, defaultHomepageData.counter_section),
+        why_choose_us_section: parseJson(s.why_choose_us_section, defaultHomepageData.why_choose_us_section),
+        working_process_section: parseJson(s.working_process_section, defaultHomepageData.working_process_section),
+        solutions_section: parseJson(s.solutions_section, defaultHomepageData.solutions_section),
+        faq_section: faqSection,
+        testimonial_section: testimonialSection,
+        services_header: parseJson(s.services_header, defaultHomepageData.services_header),
+        board_of_directors_section: parseJson(s.board_of_directors_section, defaultHomepageData.board_of_directors_section),
+        projects_section: parseJson(s.projects_section, defaultHomepageData.projects_section),
+        sister_concern_section: parseJson(s.sister_concern_section, defaultHomepageData.sister_concern_section),
+        products_section: parseJson(s.products_section, defaultHomepageData.products_section),
+        news_and_blog_section: parseJson(s.news_and_blog_section, defaultHomepageData.news_and_blog_section),
+        section_visibility: parseJson(s.section_visibility, defaultHomepageData.section_visibility),
         updated_at: s.updated_at,
       };
 
@@ -266,8 +400,9 @@ export const getHomepage = async (_req: Request, res: Response): Promise<void> =
       `INSERT INTO homepage_settings (
         slider_section, service_cards, running_text, about_section, counter_section,
         why_choose_us_section, working_process_section, solutions_section, faq_section,
-        testimonial_section, section_visibility
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        testimonial_section, services_header, board_of_directors_section, projects_section,
+        sister_concern_section, products_section, section_visibility
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         JSON.stringify(defaultHomepageData.slider_section),
         JSON.stringify(defaultHomepageData.service_cards),
@@ -279,6 +414,11 @@ export const getHomepage = async (_req: Request, res: Response): Promise<void> =
         JSON.stringify(defaultHomepageData.solutions_section),
         JSON.stringify(defaultHomepageData.faq_section),
         JSON.stringify(defaultHomepageData.testimonial_section),
+        JSON.stringify(defaultHomepageData.services_header),
+        JSON.stringify(defaultHomepageData.board_of_directors_section),
+        JSON.stringify(defaultHomepageData.projects_section),
+        JSON.stringify(defaultHomepageData.sister_concern_section),
+        JSON.stringify(defaultHomepageData.products_section),
         JSON.stringify(defaultHomepageData.section_visibility),
       ]
     );
@@ -314,6 +454,12 @@ export const updateHomepage = async (req: AuthenticatedRequest, res: Response): 
       solutions_section,
       faq_section,
       testimonial_section,
+      services_header,
+      board_of_directors_section,
+      projects_section,
+      sister_concern_section,
+      products_section,
+      news_and_blog_section,
       section_visibility,
     } = req.body;
 
@@ -332,21 +478,33 @@ export const updateHomepage = async (req: AuthenticatedRequest, res: Response): 
           solutions_section = COALESCE(?, solutions_section),
           faq_section = COALESCE(?, faq_section),
           testimonial_section = COALESCE(?, testimonial_section),
+          services_header = COALESCE(?, services_header),
+          board_of_directors_section = COALESCE(?, board_of_directors_section),
+          projects_section = COALESCE(?, projects_section),
+          sister_concern_section = COALESCE(?, sister_concern_section),
+          products_section = COALESCE(?, products_section),
+          news_and_blog_section = COALESCE(?, news_and_blog_section),
           section_visibility = COALESCE(?, section_visibility),
           updated_at = NOW()
         WHERE id = ?`,
         [
-          slider_section ? JSON.stringify(slider_section) : null,
-          service_cards ? JSON.stringify(service_cards) : null,
-          running_text ? JSON.stringify(running_text) : null,
-          about_section ? JSON.stringify(about_section) : null,
-          counter_section ? JSON.stringify(counter_section) : null,
-          why_choose_us_section ? JSON.stringify(why_choose_us_section) : null,
-          working_process_section ? JSON.stringify(working_process_section) : null,
-          solutions_section ? JSON.stringify(solutions_section) : null,
-          faq_section ? JSON.stringify(faq_section) : null,
-          testimonial_section ? JSON.stringify(testimonial_section) : null,
-          section_visibility ? JSON.stringify(section_visibility) : null,
+          slider_section !== undefined ? JSON.stringify(slider_section) : null,
+          service_cards !== undefined ? JSON.stringify(service_cards) : null,
+          running_text !== undefined ? JSON.stringify(running_text) : null,
+          about_section !== undefined ? JSON.stringify(about_section) : null,
+          counter_section !== undefined ? JSON.stringify(counter_section) : null,
+          why_choose_us_section !== undefined ? JSON.stringify(why_choose_us_section) : null,
+          working_process_section !== undefined ? JSON.stringify(working_process_section) : null,
+          solutions_section !== undefined ? JSON.stringify(solutions_section) : null,
+          faq_section !== undefined ? JSON.stringify(faq_section) : null,
+          testimonial_section !== undefined ? JSON.stringify(testimonial_section) : null,
+          services_header !== undefined ? JSON.stringify(services_header) : null,
+          board_of_directors_section !== undefined ? JSON.stringify(board_of_directors_section) : null,
+          projects_section !== undefined ? JSON.stringify(projects_section) : null,
+          sister_concern_section !== undefined ? JSON.stringify(sister_concern_section) : null,
+          products_section !== undefined ? JSON.stringify(products_section) : null,
+          news_and_blog_section !== undefined ? JSON.stringify(news_and_blog_section) : null,
+          section_visibility !== undefined ? JSON.stringify(section_visibility) : null,
           existing[0].id,
         ]
       );
@@ -355,8 +513,9 @@ export const updateHomepage = async (req: AuthenticatedRequest, res: Response): 
         `INSERT INTO homepage_settings (
           slider_section, service_cards, running_text, about_section, counter_section,
           why_choose_us_section, working_process_section, solutions_section, faq_section,
-          testimonial_section, section_visibility
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          testimonial_section, services_header, board_of_directors_section, projects_section,
+          sister_concern_section, products_section, news_and_blog_section, section_visibility
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           JSON.stringify(slider_section || defaultHomepageData.slider_section),
           JSON.stringify(service_cards || defaultHomepageData.service_cards),
@@ -368,6 +527,12 @@ export const updateHomepage = async (req: AuthenticatedRequest, res: Response): 
           JSON.stringify(solutions_section || defaultHomepageData.solutions_section),
           JSON.stringify(faq_section || defaultHomepageData.faq_section),
           JSON.stringify(testimonial_section || defaultHomepageData.testimonial_section),
+          JSON.stringify(services_header || defaultHomepageData.services_header),
+          JSON.stringify(board_of_directors_section || defaultHomepageData.board_of_directors_section),
+          JSON.stringify(projects_section || defaultHomepageData.projects_section),
+          JSON.stringify(sister_concern_section || defaultHomepageData.sister_concern_section),
+          JSON.stringify(products_section || defaultHomepageData.products_section),
+          JSON.stringify(news_and_blog_section || defaultHomepageData.news_and_blog_section),
           JSON.stringify(section_visibility || defaultHomepageData.section_visibility),
         ]
       );
