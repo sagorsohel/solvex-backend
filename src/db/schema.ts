@@ -88,6 +88,7 @@ export const aboutPageSettings = mysqlTable("about_page_settings", {
   strategicPillarsSection: json("strategic_pillars_section").$type<any>(),
   peopleValuesSection: json("people_values_section").$type<any>(),
   efficiencyCertificatesSection: json("efficiency_certificates_section").$type<any>(),
+  factorySection: json("factory_section").$type<any>(),
   carbonFreeFutureSection: json("carbon_free_future_section").$type<any>(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

@@ -23,6 +23,7 @@ export const getAboutPage = async (_req: Request, res: Response): Promise<void> 
           strategic_pillars_section: s.strategicPillarsSection,
           people_values_section: s.peopleValuesSection,
           efficiency_certificates_section: s.efficiencyCertificatesSection,
+          factory_section: s.factorySection,
           carbon_free_future_section: s.carbonFreeFutureSection,
           updated_at: s.updatedAt,
         },
@@ -47,6 +48,7 @@ export const updateAboutPage = async (req: AuthenticatedRequest, res: Response):
       strategic_pillars_section,
       people_values_section,
       efficiency_certificates_section,
+      factory_section,
       carbon_free_future_section,
     } = req.body;
 
@@ -64,6 +66,7 @@ export const updateAboutPage = async (req: AuthenticatedRequest, res: Response):
           strategicPillarsSection: strategic_pillars_section ?? existing[0].strategicPillarsSection,
           peopleValuesSection: people_values_section ?? existing[0].peopleValuesSection,
           efficiencyCertificatesSection: efficiency_certificates_section ?? existing[0].efficiencyCertificatesSection,
+          factorySection: factory_section ?? existing[0].factorySection,
           carbonFreeFutureSection: carbon_free_future_section ?? existing[0].carbonFreeFutureSection,
         })
         .where(eq(aboutPageSettings.id, existing[0].id));
@@ -77,6 +80,7 @@ export const updateAboutPage = async (req: AuthenticatedRequest, res: Response):
         strategicPillarsSection: strategic_pillars_section,
         peopleValuesSection: people_values_section,
         efficiencyCertificatesSection: efficiency_certificates_section,
+        factorySection: factory_section,
         carbonFreeFutureSection: carbon_free_future_section,
       });
     }
