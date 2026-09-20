@@ -63,6 +63,111 @@ export const defaultSiteSettingsData = {
       { title: "Security & ESG Compliance", url: "#" },
     ],
   },
+  contactPageSettings: {
+    channelsBadge: "ENTERPRISE CHANNELS",
+    channelsTitle: "Direct Business Connections",
+    channelsDescription: "Connect with our technical design and pricing departments directly. We guarantee prompt responses and full confidentiality.",
+    proposalsEmail: "proposals@solvexglobal.com",
+    salesPhoneUs: "+1 (952) 435-7106 (US)",
+    salesPhoneEu: "+49 (30) 8432-9011 (EU)",
+    complianceEmail: "compliance@solvexglobal.com",
+    slaBadge: "24h",
+    slaTitle: "SLA Response Guarantee",
+    slaDescription: "Our technical account executives respond to qualified commercial RFPs within one business day.",
+    branchesBadge: "Offices Network",
+    branchesTitle: "Our International Branch Network",
+    branchesSubtitle: "Solvex maintains active engineering hubs across four continents to ensure local regulatory alignment and rapid response capabilities.",
+    translations: {
+      bn: {
+        channelsBadge: "এন্টারপ্রাইজ চ্যানেল",
+        channelsTitle: "সরাসরি ব্যবসায়িক যোগাযোগ",
+        channelsDescription: "আমাদের টেকনিক্যাল ডিজাইন ও প্রাইসিং ডিপার্টমেন্টের সাথে সরাসরি যোগাযোগ করুন। আমরা দ্রুত সাড়া দেওয়ার নিশ্চয়তা দিচ্ছি।",
+        slaTitle: "এসএলএ রেসপন্স গ্যারান্টি",
+        slaDescription: "আমাদের টেকনিক্যাল অ্যাকাউন্ট এক্সিকিউটিভরা এক কার্যদিবসের মধ্যে আপনার আরএফপির জবাব প্রদান করে।",
+        branchesBadge: "শাখা নেটওয়ার্ক",
+        branchesTitle: "আমাদের আন্তর্জাতিক শাখা নেটওয়ার্ক",
+        branchesSubtitle: "সলভেক্স চারটি মহাদেশ জুড়ে সক্রিয় ইঞ্জিনিয়ারিং হাব পরিচালনা করে যাতে স্থানীয় নিয়ন্ত্রক মান নিশ্চিত হয়।",
+      },
+    },
+  },
+  branches: [
+    {
+      id: "b1",
+      city: "Berlin, Germany",
+      role: "Global Headquarters",
+      address: "12 Division Park, SKY 12546, Berlin",
+      phone: "+49 (30) 8432-9011",
+      email: "berlin@solvexglobal.com",
+      hours: "Mon - Fri: 8:00 - 18:00",
+      region: "Europe",
+      translations: {
+        bn: {
+          city: "বার্লিন, জার্মানি",
+          role: "গ্লোবাল হেডকোয়ার্টার",
+          address: "১২ ডিভিশন পার্ক, স্কাই ১২৫৪৬, বার্লিন",
+          hours: "সোম - শুক্র: ৮:০০ - ১৮:০০",
+          region: "ইউরোপ",
+        },
+      },
+    },
+    {
+      id: "b2",
+      city: "Austin, Texas",
+      role: "North America Hub",
+      address: "804 Congress Ave, Suite 300, Austin, TX 78701",
+      phone: "+1 (512) 490-3320",
+      email: "austin@solvexglobal.com",
+      hours: "Mon - Fri: 8:00 - 18:00",
+      region: "North America",
+      translations: {
+        bn: {
+          city: "অস্টিন, টেক্সাস",
+          role: "উত্তর আমেরিকা হাব",
+          address: "৮০৪ কংগ্রেস এভিনিউ, স্যুট ৩০০, অস্টিন, টিএক্স ৭৮৭০১",
+          hours: "সোম - শুক্র: ৮:০০ - ১৮:০০",
+          region: "উত্তর আমেরিকা",
+        },
+      },
+    },
+    {
+      id: "b3",
+      city: "Sydney, Australia",
+      role: "Asia-Pacific Hub",
+      address: "Level 22, 101 George St, Sydney NSW 2000",
+      phone: "+61 (2) 9233-4450",
+      email: "sydney@solvexglobal.com",
+      hours: "Mon - Fri: 9:00 - 17:00",
+      region: "Asia-Pacific",
+      translations: {
+        bn: {
+          city: "সিডনি, অস্ট্রেলিয়া",
+          role: "এশিয়া-প্যাসিফিক হাব",
+          address: "লেভেল ২২, ১০১ জর্জ সেন্ট, সিডনি এনএসডব্লিউ ২০০০",
+          hours: "সোম - শুক্র: ৯:০০ - ১৭:০০",
+          region: "এশিয়া-প্যাসিফিক",
+        },
+      },
+    },
+    {
+      id: "b4",
+      city: "Santiago, Chile",
+      role: "Latin America Hub",
+      address: "Av. Vitacura 2670, Las Condes, Santiago",
+      phone: "+56 (2) 2340-8800",
+      email: "santiago@solvexglobal.com",
+      hours: "Mon - Fri: 8:30 - 17:30",
+      region: "Latin America",
+      translations: {
+        bn: {
+          city: "সান্তিয়াগো, চিলি",
+          role: "ল্যাটিন আমেরিকা হাব",
+          address: "এভিনিউ ভিস্তাকুরা ২৬৭০, লাস কনদেস, সান্তিয়াগো",
+          hours: "সোম - শুক্র: ৮:৩০ - ১৭:৩০",
+          region: "ল্যাটিন আমেরিকা",
+        },
+      },
+    },
+  ],
   translations: {
     bn: {
       address: "১২ ডিভিশন পার্ক, স্কাই ১২৫৪৬, বার্লিন",
@@ -108,14 +213,24 @@ export const ensureSiteSettingsTable = async () => {
         social_links JSON,
         header_settings JSON,
         footer_settings JSON,
+        contact_page_settings JSON,
+        branches JSON,
         translations JSON,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // Migrations for existing tables
+    try {
+      await pool.query(`ALTER TABLE site_settings ADD COLUMN contact_page_settings JSON NULL`);
+    } catch (_) {}
+    try {
+      await pool.query(`ALTER TABLE site_settings ADD COLUMN branches JSON NULL`);
+    } catch (_) {}
+
     // Check if initial row exists
-    const [rows]: any = await pool.query("SELECT COUNT(*) as count FROM site_settings");
-    if (rows[0]?.count === 0) {
+    const [rows]: any = await pool.query("SELECT * FROM site_settings LIMIT 1");
+    if (rows.length === 0) {
       await db.insert(siteSettings).values({
         contactPhone: defaultSiteSettingsData.contactPhone,
         contactEmail: defaultSiteSettingsData.contactEmail,
@@ -125,9 +240,25 @@ export const ensureSiteSettingsTable = async () => {
         socialLinks: defaultSiteSettingsData.socialLinks,
         headerSettings: defaultSiteSettingsData.headerSettings,
         footerSettings: defaultSiteSettingsData.footerSettings,
+        contactPageSettings: defaultSiteSettingsData.contactPageSettings,
+        branches: defaultSiteSettingsData.branches,
         translations: defaultSiteSettingsData.translations,
       });
       console.log("✅ site_settings table seeded with initial settings.");
+    } else {
+      // If row exists but branches or contactPageSettings are null, backfill defaults
+      const current = rows[0];
+      const updates: Record<string, any> = {};
+      if (!current.branches || current.branches === "null") {
+        updates.branches = defaultSiteSettingsData.branches;
+      }
+      if (!current.contact_page_settings || current.contact_page_settings === "null") {
+        updates.contactPageSettings = defaultSiteSettingsData.contactPageSettings;
+      }
+      if (Object.keys(updates).length > 0) {
+        await db.update(siteSettings).set(updates).where(eq(siteSettings.id, current.id));
+        console.log("✅ site_settings backfilled with default branches & contact page settings.");
+      }
     }
 
     siteSettingsTableInitialized = true;
@@ -156,6 +287,8 @@ export const getSiteSettings = async (_req: Request, res: Response): Promise<voi
           socialLinks: s.socialLinks || defaultSiteSettingsData.socialLinks,
           headerSettings: s.headerSettings || defaultSiteSettingsData.headerSettings,
           footerSettings: s.footerSettings || defaultSiteSettingsData.footerSettings,
+          contactPageSettings: s.contactPageSettings || defaultSiteSettingsData.contactPageSettings,
+          branches: s.branches || defaultSiteSettingsData.branches,
           translations: s.translations || defaultSiteSettingsData.translations,
           updatedAt: s.updatedAt,
         },
@@ -191,6 +324,8 @@ export const updateSiteSettings = async (req: AuthenticatedRequest, res: Respons
       socialLinks,
       headerSettings,
       footerSettings,
+      contactPageSettings,
+      branches,
       translations,
     } = req.body;
 
@@ -208,6 +343,8 @@ export const updateSiteSettings = async (req: AuthenticatedRequest, res: Respons
           socialLinks: socialLinks !== undefined ? socialLinks : existing[0].socialLinks,
           headerSettings: headerSettings !== undefined ? headerSettings : existing[0].headerSettings,
           footerSettings: footerSettings !== undefined ? footerSettings : existing[0].footerSettings,
+          contactPageSettings: contactPageSettings !== undefined ? contactPageSettings : existing[0].contactPageSettings,
+          branches: branches !== undefined ? branches : existing[0].branches,
           translations: translations !== undefined ? translations : existing[0].translations,
         })
         .where(eq(siteSettings.id, existing[0].id));
@@ -221,6 +358,8 @@ export const updateSiteSettings = async (req: AuthenticatedRequest, res: Respons
         socialLinks: socialLinks ?? defaultSiteSettingsData.socialLinks,
         headerSettings: headerSettings ?? defaultSiteSettingsData.headerSettings,
         footerSettings: footerSettings ?? defaultSiteSettingsData.footerSettings,
+        contactPageSettings: contactPageSettings ?? defaultSiteSettingsData.contactPageSettings,
+        branches: branches ?? defaultSiteSettingsData.branches,
         translations: translations ?? defaultSiteSettingsData.translations,
       });
     }

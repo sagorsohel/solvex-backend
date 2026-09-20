@@ -420,6 +420,52 @@ export const siteSettings = mysqlTable("site_settings", {
     galleryImages?: Array<{ image: string; link?: string; alt?: string }>;
     bottomLinks?: Array<{ title: string; url: string }>;
   }>(),
+  contactPageSettings: json("contact_page_settings").$type<{
+    channelsBadge?: string;
+    channelsTitle?: string;
+    channelsDescription?: string;
+    proposalsEmail?: string;
+    salesPhoneUs?: string;
+    salesPhoneEu?: string;
+    complianceEmail?: string;
+    slaBadge?: string;
+    slaTitle?: string;
+    slaDescription?: string;
+    branchesBadge?: string;
+    branchesTitle?: string;
+    branchesSubtitle?: string;
+    translations?: {
+      bn?: {
+        channelsBadge?: string;
+        channelsTitle?: string;
+        channelsDescription?: string;
+        slaTitle?: string;
+        slaDescription?: string;
+        branchesBadge?: string;
+        branchesTitle?: string;
+        branchesSubtitle?: string;
+      };
+    };
+  }>(),
+  branches: json("branches").$type<Array<{
+    id: string;
+    city: string;
+    role: string;
+    address: string;
+    phone: string;
+    email: string;
+    hours: string;
+    region: string;
+    translations?: {
+      bn?: {
+        city?: string;
+        role?: string;
+        address?: string;
+        hours?: string;
+        region?: string;
+      };
+    };
+  }>>(),
   translations: json("translations").$type<{
     bn?: {
       address?: string;
