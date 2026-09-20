@@ -117,7 +117,17 @@ export const ensureProductSettingsTables = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Migration: ensure key_features and translations columns exist
+    // Migration: ensure key_features, features, and translations columns exist
+    try {
+      await pool.query(`ALTER TABLE sister_concerns ADD COLUMN features JSON NULL`);
+    } catch (_) {}
+    try {
+      await pool.query(`
+        UPDATE sister_concerns 
+        SET features = JSON_ARRAY('3+ Core Product Categories', 'Turnkey EPC Engineering & Supply Chain', 'ISO 9001 Certified Quality & 25-Year Reliability')
+        WHERE (features IS NULL OR features = '[]') AND (name LIKE '%Power%' OR code = 'SPEL')
+      `);
+    } catch (_) {}
     try {
       await pool.query(`ALTER TABLE sister_concerns ADD COLUMN translations JSON NULL`);
     } catch (_) {}
@@ -294,6 +304,9 @@ export const getSisterConcerns = async (_req: Request, res: Response): Promise<v
     const [rows]: any = await pool.query(query);
     const mapped = rows.map((sc: any) => ({
       ...sc,
+      features: sc.features
+        ? (typeof sc.features === "string" ? JSON.parse(sc.features) : sc.features)
+        : [],
       translations: sc.translations
         ? (typeof sc.translations === "string" ? JSON.parse(sc.translations) : sc.translations)
         : {},
@@ -314,6 +327,9 @@ export const getSisterConcernById = async (req: Request, res: Response): Promise
     }
     const item = {
       ...rows[0],
+      features: rows[0].features
+        ? (typeof rows[0].features === "string" ? JSON.parse(rows[0].features) : rows[0].features)
+        : [],
       translations: rows[0].translations
         ? (typeof rows[0].translations === "string" ? JSON.parse(rows[0].translations) : rows[0].translations)
         : {},
@@ -327,29 +343,33 @@ export const getSisterConcernById = async (req: Request, res: Response): Promise
 export const createSisterConcern = async (req: Request, res: Response): Promise<void> => {
   try {
     await ensureProductSettingsTables();
-    const { name, code, description, logo, website, status, order_index, translations } = req.body;
+    const { name, code, description, logo, website, status, order_index, features, translations } = req.body;
     if (!name?.trim()) {
       res.status(400).json({ status: "error", message: "Sister concern name is required" });
       return;
     }
 
     const [result]: any = await pool.query(`
-      INSERT INTO sister_concerns (name, code, description, logo, website, status, order_index, translations)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sister_concerns (name, code, description, logo, website, status, order_index, features, translations)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       name.trim(),
       code?.trim() || null,
-      description?.trim() || null,
+      description !== undefined ? (description?.trim() || null) : null,
       logo?.trim() || null,
       website?.trim() || null,
       status || "active",
       order_index ? parseInt(order_index, 10) : 0,
+      features ? (typeof features === "string" ? features : JSON.stringify(features)) : null,
       translations ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
     ]);
 
     const [created]: any = await pool.query(`SELECT * FROM sister_concerns WHERE id = ?`, [result.insertId]);
     const item = {
       ...created[0],
+      features: created[0].features
+        ? (typeof created[0].features === "string" ? JSON.parse(created[0].features) : created[0].features)
+        : [],
       translations: created[0].translations
         ? (typeof created[0].translations === "string" ? JSON.parse(created[0].translations) : created[0].translations)
         : {},
@@ -363,7 +383,7 @@ export const createSisterConcern = async (req: Request, res: Response): Promise<
 export const updateSisterConcern = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { name, code, description, logo, website, status, order_index, translations } = req.body;
+    const { name, code, description, logo, website, status, order_index, features, translations } = req.body;
 
     const [existing]: any = await pool.query(`SELECT id FROM sister_concerns WHERE id = ?`, [id]);
     if (!existing.length) {
@@ -371,32 +391,57 @@ export const updateSisterConcern = async (req: Request, res: Response): Promise<
       return;
     }
 
-    await pool.query(`
-      UPDATE sister_concerns
-      SET name = COALESCE(?, name),
-          code = COALESCE(?, code),
-          description = COALESCE(?, description),
-          logo = COALESCE(?, logo),
-          website = COALESCE(?, website),
-          status = COALESCE(?, status),
-          order_index = COALESCE(?, order_index),
-          translations = COALESCE(?, translations)
-      WHERE id = ?
-    `, [
-      name !== undefined ? name.trim() : null,
-      code !== undefined ? code?.trim() || null : null,
-      description !== undefined ? description?.trim() || null : null,
-      logo !== undefined ? logo?.trim() || null : null,
-      website !== undefined ? website?.trim() || null : null,
-      status !== undefined ? status : null,
-      order_index !== undefined ? parseInt(order_index, 10) : null,
-      translations !== undefined ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null,
-      id,
-    ]);
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (name !== undefined) {
+      updates.push("name = ?");
+      params.push(name.trim());
+    }
+    if (code !== undefined) {
+      updates.push("code = ?");
+      params.push(code ? code.trim() : null);
+    }
+    if (description !== undefined) {
+      updates.push("description = ?");
+      params.push(description ? description.trim() : null);
+    }
+    if (logo !== undefined) {
+      updates.push("logo = ?");
+      params.push(logo ? logo.trim() : null);
+    }
+    if (website !== undefined) {
+      updates.push("website = ?");
+      params.push(website ? website.trim() : null);
+    }
+    if (status !== undefined) {
+      updates.push("status = ?");
+      params.push(status);
+    }
+    if (order_index !== undefined) {
+      updates.push("order_index = ?");
+      params.push(parseInt(order_index, 10) || 0);
+    }
+    if (features !== undefined) {
+      updates.push("features = ?");
+      params.push(features ? (typeof features === "string" ? features : JSON.stringify(features)) : JSON.stringify([]));
+    }
+    if (translations !== undefined) {
+      updates.push("translations = ?");
+      params.push(translations ? (typeof translations === "string" ? translations : JSON.stringify(translations)) : null);
+    }
+
+    if (updates.length > 0) {
+      params.push(id);
+      await pool.query(`UPDATE sister_concerns SET ${updates.join(", ")} WHERE id = ?`, params);
+    }
 
     const [updated]: any = await pool.query(`SELECT * FROM sister_concerns WHERE id = ?`, [id]);
     const item = {
       ...updated[0],
+      features: updated[0].features
+        ? (typeof updated[0].features === "string" ? JSON.parse(updated[0].features) : updated[0].features)
+        : [],
       translations: updated[0].translations
         ? (typeof updated[0].translations === "string" ? JSON.parse(updated[0].translations) : updated[0].translations)
         : {},

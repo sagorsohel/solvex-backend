@@ -240,7 +240,8 @@ export const sisterConcerns = mysqlTable("sister_concerns", {
   website: varchar("website", { length: 255 }),
   status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
   orderIndex: int("order_index").default(0).notNull(),
-  translations: json("translations").$type<{ bn?: { name?: string; description?: string } }>(),
+  features: json("features").$type<string[]>(),
+  translations: json("translations").$type<{ bn?: { name?: string; description?: string; features?: string[] } }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
