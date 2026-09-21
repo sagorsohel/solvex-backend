@@ -34,6 +34,7 @@ import { ensureProductsColumns } from "./controllers/product.controller.js";
 import { ensureBlogTable } from "./controllers/blog.controller.js";
 import { ensureSiteSettingsTable } from "./controllers/site-settings.controller.js";
 import { ensureTestimonialsTable } from "./controllers/testimonials.controller.js";
+import { ensureAboutPageColumns } from "./controllers/about.controller.js";
 import path from "path";
 
 dotenv.config();
@@ -138,6 +139,7 @@ const server = app.listen(PORT, async () => {
   await ensureBlogTable();
   await ensureSiteSettingsTable();
   await ensureTestimonialsTable();
+  await ensureAboutPageColumns();
 
   // Sync any existing legacy images from ./uploads to persistent uploadsDir
   if (uploadsDir !== localUploadsDir && fs.existsSync(localUploadsDir)) {
