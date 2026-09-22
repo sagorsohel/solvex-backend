@@ -249,7 +249,7 @@ export const ensureSiteSettingsTable = async () => {
       // If row exists but branches or contactPageSettings are null, backfill defaults
       const current = rows[0];
       const updates: Record<string, any> = {};
-      if (!current.branches || current.branches === "null") {
+      if (current.branches === null || current.branches === undefined || current.branches === "null") {
         updates.branches = defaultSiteSettingsData.branches;
       }
       if (!current.contact_page_settings || current.contact_page_settings === "null") {
@@ -288,7 +288,7 @@ export const getSiteSettings = async (_req: Request, res: Response): Promise<voi
           headerSettings: s.headerSettings || defaultSiteSettingsData.headerSettings,
           footerSettings: s.footerSettings || defaultSiteSettingsData.footerSettings,
           contactPageSettings: s.contactPageSettings || defaultSiteSettingsData.contactPageSettings,
-          branches: s.branches || defaultSiteSettingsData.branches,
+          branches: Array.isArray(s.branches) ? s.branches : (s.branches ?? defaultSiteSettingsData.branches),
           translations: s.translations || defaultSiteSettingsData.translations,
           updatedAt: s.updatedAt,
         },
