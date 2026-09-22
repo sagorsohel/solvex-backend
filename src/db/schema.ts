@@ -543,3 +543,102 @@ export const pageHeaders = mysqlTable("page_headers", {
 export type PageHeader = typeof pageHeaders.$inferSelect;
 export type NewPageHeader = typeof pageHeaders.$inferInsert;
 
+// ==========================================
+// 10. Solar Sizing Calculator & Sizing CMS
+// ==========================================
+
+// 10.1 Household & Commercial Appliances Catalog
+export const calculatorAppliances = mysqlTable("calculator_appliances", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 191 }).notNull(),
+  nameBn: varchar("name_bn", { length: 191 }),
+  category: varchar("category", { length: 50 }).default("cooling").notNull(),
+  icon: varchar("icon", { length: 50 }).default("Zap").notNull(),
+  defaultUnit: mysqlEnum("default_unit", ["watt", "hp"]).default("watt").notNull(),
+  defaultRating: decimal("default_rating", { precision: 10, scale: 2 }).default("65.00").notNull(),
+  defaultWatts: int("default_watts").default(65).notNull(),
+  defaultHours: decimal("default_hours", { precision: 4, scale: 1 }).default("6.0").notNull(),
+  defaultQuantity: int("default_quantity").default(1).notNull(),
+  orderIndex: int("order_index").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CalculatorAppliance = typeof calculatorAppliances.$inferSelect;
+export type NewCalculatorAppliance = typeof calculatorAppliances.$inferInsert;
+
+// 10.2 Solar System Types (Hybrid, On-Grid, Off-Grid)
+export const calculatorSolarTypes = mysqlTable("calculator_solar_types", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 191 }).notNull(),
+  nameBn: varchar("name_bn", { length: 191 }),
+  systemCode: varchar("system_code", { length: 50 }).notNull(),
+  tagline: varchar("tagline", { length: 255 }),
+  description: text("description"),
+  descriptionBn: text("description_bn"),
+  benefits: json("benefits").$type<string[]>(),
+  badge: varchar("badge", { length: 50 }),
+  minRecommendedWatts: int("min_recommended_watts").default(500),
+  efficiencyFactor: decimal("efficiency_factor", { precision: 4, scale: 2 }).default("0.85"),
+  orderIndex: int("order_index").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CalculatorSolarType = typeof calculatorSolarTypes.$inferSelect;
+export type NewCalculatorSolarType = typeof calculatorSolarTypes.$inferInsert;
+
+// 10.3 Battery Chemistry Types (Lithium-ion LiFePO4, Tubular Lead-Acid, Gel)
+export const calculatorBatteryTypes = mysqlTable("calculator_battery_types", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 191 }).notNull(),
+  nameBn: varchar("name_bn", { length: 191 }),
+  batteryCode: varchar("battery_code", { length: 50 }).notNull(),
+  tagline: varchar("tagline", { length: 255 }),
+  description: text("description"),
+  descriptionBn: text("description_bn"),
+  depthOfDischarge: int("depth_of_discharge").default(90).notNull(),
+  lifespanYears: varchar("lifespan_years", { length: 50 }).default("10-15 Years"),
+  cycleLife: int("cycle_life").default(6000),
+  maintenance: varchar("maintenance", { length: 100 }).default("Zero Maintenance"),
+  badge: varchar("badge", { length: 50 }),
+  orderIndex: int("order_index").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CalculatorBatteryType = typeof calculatorBatteryTypes.$inferSelect;
+export type NewCalculatorBatteryType = typeof calculatorBatteryTypes.$inferInsert;
+
+// 10.4 Wattage-Range Solar Recommendations & Suggested Products Linker
+export const calculatorRecommendations = mysqlTable("calculator_recommendations", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 191 }).notNull(),
+  titleBn: varchar("title_bn", { length: 191 }),
+  minWatt: int("min_watt").notNull(),
+  maxWatt: int("max_watt").notNull(),
+  recommendedSolarKw: decimal("recommended_solar_kw", { precision: 6, scale: 2 }).notNull(),
+  recommendedPanelsCount: int("recommended_panels_count").default(3),
+  recommendedPanelModel: varchar("recommended_panel_model", { length: 191 }),
+  recommendedInverterKw: decimal("recommended_inverter_kw", { precision: 6, scale: 2 }).notNull(),
+  recommendedInverterModel: varchar("recommended_inverter_model", { length: 191 }),
+  recommendedBatteryCapacity: varchar("recommended_battery_capacity", { length: 191 }),
+  packageFeatures: json("package_features").$type<string[]>(),
+  description: text("description"),
+  descriptionBn: text("description_bn"),
+  suggestedProductIds: json("suggested_product_ids").$type<number[]>(),
+  estimatedCostBdt: varchar("estimated_cost_bdt", { length: 100 }),
+  estimatedCostUsd: varchar("estimated_cost_usd", { length: 100 }),
+  orderIndex: int("order_index").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CalculatorRecommendation = typeof calculatorRecommendations.$inferSelect;
+export type NewCalculatorRecommendation = typeof calculatorRecommendations.$inferInsert;
+
+
