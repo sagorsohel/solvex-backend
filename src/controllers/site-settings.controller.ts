@@ -77,6 +77,68 @@ export const defaultSiteSettingsData = {
     branchesBadge: "Offices Network",
     branchesTitle: "Our International Branch Network",
     branchesSubtitle: "Solvex maintains active engineering hubs across four continents to ensure local regulatory alignment and rapid response capabilities.",
+    projectInterests: [
+      {
+        id: "pi-1",
+        value: "Utility-Scale Solar PV",
+        label: "Utility-Scale Solar PV (10MW+)",
+        translations: {
+          bn: {
+            label: "ইউটিলিটি-স্কেল সোলার পিভি (১০ মেগাওয়াট+)",
+          },
+        },
+      },
+      {
+        id: "pi-2",
+        value: "Industrial Rooftop Solar",
+        label: "Industrial Rooftop Solar (100kW - 5MW)",
+        translations: {
+          bn: {
+            label: "ইন্ডাস্ট্রিয়াল রুফটপ সোলার (১০০ কিলোওয়াট - ৫ মেগাওয়াট)",
+          },
+        },
+      },
+      {
+        id: "pi-3",
+        value: "Battery Energy Storage (BESS)",
+        label: "Battery Energy Storage (BESS)",
+        translations: {
+          bn: {
+            label: "ব্যাটারি এনার্জি স্টোরেজ (বিইএসএস)",
+          },
+        },
+      },
+      {
+        id: "pi-4",
+        value: "Solar Inverter Wholesale",
+        label: "Solar Inverter Wholesale & Supply",
+        translations: {
+          bn: {
+            label: "সোলার ইনভার্টার পাইকারি ও সরবরাহ",
+          },
+        },
+      },
+      {
+        id: "pi-5",
+        value: "O&M and Technical Advisory",
+        label: "O&M and Technical Advisory",
+        translations: {
+          bn: {
+            label: "ও অ্যান্ড এম এবং প্রযুক্তিগত পরামর্শ",
+          },
+        },
+      },
+      {
+        id: "pi-6",
+        value: "Other Clean Energy Inquiry",
+        label: "Other Clean Energy Inquiry",
+        translations: {
+          bn: {
+            label: "অন্যান্য ক্লিন এনার্জি অনুসন্ধান",
+          },
+        },
+      },
+    ],
     translations: {
       bn: {
         channelsBadge: "এন্টারপ্রাইজ চ্যানেল",
@@ -287,7 +349,20 @@ export const getSiteSettings = async (_req: Request, res: Response): Promise<voi
           socialLinks: s.socialLinks || defaultSiteSettingsData.socialLinks,
           headerSettings: s.headerSettings || defaultSiteSettingsData.headerSettings,
           footerSettings: s.footerSettings || defaultSiteSettingsData.footerSettings,
-          contactPageSettings: s.contactPageSettings || defaultSiteSettingsData.contactPageSettings,
+          contactPageSettings: (() => {
+            const cps = s.contactPageSettings || defaultSiteSettingsData.contactPageSettings;
+            return {
+              ...defaultSiteSettingsData.contactPageSettings,
+              ...cps,
+              projectInterests: Array.isArray(cps?.projectInterests)
+                ? cps.projectInterests
+                : defaultSiteSettingsData.contactPageSettings.projectInterests,
+              translations: {
+                ...defaultSiteSettingsData.contactPageSettings.translations,
+                ...(cps?.translations || {}),
+              },
+            };
+          })(),
           branches: Array.isArray(s.branches) ? s.branches : (s.branches ?? defaultSiteSettingsData.branches),
           translations: s.translations || defaultSiteSettingsData.translations,
           updatedAt: s.updatedAt,

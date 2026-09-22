@@ -435,6 +435,16 @@ export const siteSettings = mysqlTable("site_settings", {
     branchesBadge?: string;
     branchesTitle?: string;
     branchesSubtitle?: string;
+    projectInterests?: Array<{
+      id: string;
+      value: string;
+      label: string;
+      translations?: {
+        bn?: {
+          label?: string;
+        };
+      };
+    }>;
     translations?: {
       bn?: {
         channelsBadge?: string;
