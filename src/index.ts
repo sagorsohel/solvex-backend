@@ -29,12 +29,14 @@ import translateRoutes from "./routes/translate.routes.js";
 import blogsRouter from "./routes/blog.routes.js";
 import siteSettingsRoutes from "./routes/site-settings.routes.js";
 import testimonialsRouter from "./routes/testimonials.routes.js";
+import pageHeaderRoutes from "./routes/page-header.routes.js";
 import { testDbConnection, pool } from "./db/index.js";
 import { ensureProductsColumns } from "./controllers/product.controller.js";
 import { ensureBlogTable } from "./controllers/blog.controller.js";
 import { ensureSiteSettingsTable } from "./controllers/site-settings.controller.js";
 import { ensureTestimonialsTable } from "./controllers/testimonials.controller.js";
 import { ensureAboutPageColumns } from "./controllers/about.controller.js";
+import { ensurePageHeadersTable } from "./controllers/page-header.controller.js";
 import path from "path";
 
 dotenv.config();
@@ -117,6 +119,7 @@ app.use("/api/product-models", productModelsRouter);
 app.use("/api/translate", translateRoutes);
 app.use("/api/blogs", blogsRouter);
 app.use("/api/site-settings", siteSettingsRoutes);
+app.use("/api/page-headers", pageHeaderRoutes);
 
 
 // 404 Handler
@@ -140,6 +143,7 @@ const server = app.listen(PORT, async () => {
   await ensureSiteSettingsTable();
   await ensureTestimonialsTable();
   await ensureAboutPageColumns();
+  await ensurePageHeadersTable();
 
   // Sync any existing legacy images from ./uploads to persistent uploadsDir
   if (uploadsDir !== localUploadsDir && fs.existsSync(localUploadsDir)) {

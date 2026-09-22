@@ -161,6 +161,7 @@ export const servicesPageSettings = mysqlTable("services_page_settings", {
   heroTitle: varchar("hero_title", { length: 191 }),
   heroTitleStyle: varchar("hero_title_style", { length: 191 }),
   heroDescription: text("hero_description"),
+  heroImage: varchar("hero_image", { length: 500 }),
   highlights: json("highlights").$type<string[]>(),
   sectionTitle: varchar("section_title", { length: 191 }),
   sectionSubtitle: text("section_subtitle"),
@@ -213,6 +214,7 @@ export const projectsPageSettings = mysqlTable("projects_page_settings", {
   title: varchar("title", { length: 191 }),
   titleHighlight: varchar("title_highlight", { length: 191 }),
   description: text("description"),
+  backgroundImage: varchar("background_image", { length: 500 }),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 
@@ -515,4 +517,29 @@ export const testimonials = mysqlTable("testimonials", {
 
 export type Testimonial = typeof testimonials.$inferSelect;
 export type NewTestimonial = typeof testimonials.$inferInsert;
+
+// 9. Central Page Headers CMS (for standard and interior pages)
+export const pageHeaders = mysqlTable("page_headers", {
+  id: int("id").primaryKey().autoincrement(),
+  pageKey: varchar("page_key", { length: 100 }).notNull().unique(),
+  badge: varchar("badge", { length: 191 }),
+  title: varchar("title", { length: 255 }),
+  highlightText: varchar("highlight_text", { length: 191 }),
+  subtitle: varchar("subtitle", { length: 255 }),
+  description: text("description"),
+  backgroundImage: varchar("background_image", { length: 500 }),
+  translations: json("translations").$type<{
+    bn?: {
+      badge?: string;
+      title?: string;
+      highlight_text?: string;
+      subtitle?: string;
+      description?: string;
+    };
+  }>(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PageHeader = typeof pageHeaders.$inferSelect;
+export type NewPageHeader = typeof pageHeaders.$inferInsert;
 
