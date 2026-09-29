@@ -47,18 +47,45 @@ export const ensureCalculatorTables = async (): Promise<void> => {
         efficiency_factor DECIMAL(4, 2) DEFAULT 0.85,
         order_index INT NOT NULL DEFAULT 0,
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        inverter_id INT NULL,
+        min_watt INT DEFAULT 0,
+        max_watt INT DEFAULT 0,
+        model VARCHAR(191) NULL,
+        price_bdt VARCHAR(100) NULL,
+        price_usd VARCHAR(100) NULL,
+        features JSON NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // Ensure columns on existing table
+    try {
+      const [solarCols]: any = await pool.query("SHOW COLUMNS FROM calculator_solar_types");
+      const solarColNames = solarCols.map((c: any) => c.Field);
+      if (!solarColNames.includes("inverter_id")) await pool.query("ALTER TABLE calculator_solar_types ADD COLUMN inverter_id INT NULL");
+      if (!solarColNames.includes("min_watt")) await pool.query("ALTER TABLE calculator_solar_types ADD COLUMN min_watt INT DEFAULT 0");
+      if (!solarColNames.includes("max_watt")) await pool.query("ALTER TABLE calculator_solar_types ADD COLUMN max_watt INT DEFAULT 0");
+      if (!solarColNames.includes("model")) await pool.query("ALTER TABLE calculator_solar_types ADD COLUMN model VARCHAR(191) NULL");
+      if (!solarColNames.includes("price_bdt")) await pool.query("ALTER TABLE calculator_solar_types ADD COLUMN price_bdt VARCHAR(100) NULL");
+      if (!solarColNames.includes("price_usd")) await pool.query("ALTER TABLE calculator_solar_types ADD COLUMN price_usd VARCHAR(100) NULL");
+      if (!solarColNames.includes("features")) await pool.query("ALTER TABLE calculator_solar_types ADD COLUMN features JSON NULL");
+    } catch (_e) {}
+
     // 3. Battery Chemistry Types (Lithium, Tubular, Gel)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS calculator_battery_types (
         id INT AUTO_INCREMENT PRIMARY KEY,
+        inverter_id INT NULL,
         name VARCHAR(191) NOT NULL,
         name_bn VARCHAR(191) NULL,
         battery_code VARCHAR(50) NOT NULL,
+        min_watt INT DEFAULT 0,
+        max_watt INT DEFAULT 0,
+        model VARCHAR(191) NULL,
+        price_bdt VARCHAR(100) NULL,
+        price_usd VARCHAR(100) NULL,
+        features JSON NULL,
         tagline VARCHAR(255) NULL,
         description TEXT NULL,
         description_bn TEXT NULL,
@@ -73,6 +100,19 @@ export const ensureCalculatorTables = async (): Promise<void> => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // Ensure columns on existing battery table
+    try {
+      const [batteryCols]: any = await pool.query("SHOW COLUMNS FROM calculator_battery_types");
+      const batteryColNames = batteryCols.map((c: any) => c.Field);
+      if (!batteryColNames.includes("inverter_id")) await pool.query("ALTER TABLE calculator_battery_types ADD COLUMN inverter_id INT NULL");
+      if (!batteryColNames.includes("min_watt")) await pool.query("ALTER TABLE calculator_battery_types ADD COLUMN min_watt INT DEFAULT 0");
+      if (!batteryColNames.includes("max_watt")) await pool.query("ALTER TABLE calculator_battery_types ADD COLUMN max_watt INT DEFAULT 0");
+      if (!batteryColNames.includes("model")) await pool.query("ALTER TABLE calculator_battery_types ADD COLUMN model VARCHAR(191) NULL");
+      if (!batteryColNames.includes("price_bdt")) await pool.query("ALTER TABLE calculator_battery_types ADD COLUMN price_bdt VARCHAR(100) NULL");
+      if (!batteryColNames.includes("price_usd")) await pool.query("ALTER TABLE calculator_battery_types ADD COLUMN price_usd VARCHAR(100) NULL");
+      if (!batteryColNames.includes("features")) await pool.query("ALTER TABLE calculator_battery_types ADD COLUMN features JSON NULL");
+    } catch (_e) {}
 
     // 4. Wattage Range Solar Recommendations & Website Product Linking
     await pool.query(`
@@ -158,6 +198,159 @@ export const ensureCalculatorTables = async (): Promise<void> => {
       `);
     }
 
+    // 5. Installation Areas & Dynamic Services
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calculator_areas (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        inverter_id INT NULL,
+        name VARCHAR(191) NOT NULL,
+        name_bn VARCHAR(191) NULL,
+        min_watt INT DEFAULT 0,
+        max_watt INT DEFAULT 0,
+        services JSON NULL,
+        order_index INT NOT NULL DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // Ensure columns on existing areas table
+    try {
+      const [areaCols]: any = await pool.query("SHOW COLUMNS FROM calculator_areas");
+      const areaColNames = areaCols.map((c: any) => c.Field);
+      if (!areaColNames.includes("inverter_id")) await pool.query("ALTER TABLE calculator_areas ADD COLUMN inverter_id INT NULL");
+      if (!areaColNames.includes("name_bn")) await pool.query("ALTER TABLE calculator_areas ADD COLUMN name_bn VARCHAR(191) NULL");
+      if (!areaColNames.includes("min_watt")) await pool.query("ALTER TABLE calculator_areas ADD COLUMN min_watt INT DEFAULT 0");
+      if (!areaColNames.includes("max_watt")) await pool.query("ALTER TABLE calculator_areas ADD COLUMN max_watt INT DEFAULT 0");
+      if (!areaColNames.includes("services")) await pool.query("ALTER TABLE calculator_areas ADD COLUMN services JSON NULL");
+    } catch (_e) {}
+
+    // Check and seed areas
+    const [areaRows]: any = await pool.query("SELECT id FROM calculator_areas LIMIT 1");
+    if (!areaRows || areaRows.length === 0) {
+      const [allInverters]: any = await pool.query("SELECT id, min_watt, max_watt FROM calculator_recommendations ORDER BY min_watt ASC");
+      const inv0 = allInverters && allInverters[0] ? allInverters[0] : { id: null, min_watt: 0, max_watt: 600 };
+      const inv1 = allInverters && allInverters[1] ? allInverters[1] : inv0;
+      const inv2 = allInverters && allInverters[2] ? allInverters[2] : inv0;
+      const inv3 = allInverters && allInverters[3] ? allInverters[3] : inv0;
+      const inv4 = allInverters && allInverters[4] ? allInverters[4] : inv0;
+
+      await pool.query(`
+        INSERT INTO calculator_areas (inverter_id, name, name_bn, min_watt, max_watt, services, order_index, is_active) VALUES
+        (${inv0.id || 'NULL'}, 'Dhaka City (Metropolitan)', 'ঢাকা মেট্রোপলিটন এলাকা', ${inv0.min_watt || 0}, ${inv0.max_watt || 600}, '${JSON.stringify([
+          { id: "srv-1", name: "Service charge", price: 500 },
+          { id: "srv-2", name: "Site Inspection & Solar Feasibility", price: 1000 },
+          { id: "srv-3", name: "Standard Electrical & Rooftop Mounting", price: 2500 }
+        ])}', 1, TRUE),
+        (${inv1.id || 'NULL'}, 'Dhaka Suburbs (Gazipur, Savar, Narayanganj)', 'ঢাকা উপশহর ও শিল্পাঞ্চল', ${inv1.min_watt || 601}, ${inv1.max_watt || 1200}, '${JSON.stringify([
+          { id: "srv-1", name: "Service charge", price: 700 },
+          { id: "srv-2", name: "Suburban Logistics & Site Survey", price: 1500 },
+          { id: "srv-3", name: "Standard Electrical & Rooftop Mounting", price: 3000 }
+        ])}', 2, TRUE),
+        (${inv2.id || 'NULL'}, 'Chittagong & Coastal Division', 'চট্টগ্রাম ও উপকূলীয় অঞ্চল', ${inv2.min_watt || 1201}, ${inv2.max_watt || 2500}, '${JSON.stringify([
+          { id: "srv-1", name: "Service charge", price: 800 },
+          { id: "srv-2", name: "Coastal Weatherproof Survey", price: 2000 },
+          { id: "srv-3", name: "Heavy Duty Electrical Commissioning", price: 3500 }
+        ])}', 3, TRUE),
+        (${inv3.id || 'NULL'}, 'Sylhet & North Bengal Division', 'সিলেট ও উত্তরবঙ্গ বিভাগ', ${inv3.min_watt || 2501}, ${inv3.max_watt || 6000}, '${JSON.stringify([
+          { id: "srv-1", name: "Service charge", price: 1000 },
+          { id: "srv-2", name: "Divisional Technical Transport & Survey", price: 2500 },
+          { id: "srv-3", name: "Array Installation & Grid Linking", price: 4000 }
+        ])}', 4, TRUE),
+        (${inv4.id || 'NULL'}, 'All Bangladesh (Nationwide Remote Outstation)', 'সমগ্র বাংলাদেশ (দূরবর্তী ও প্রত্যন্ত অঞ্চল)', ${inv4.min_watt || 6001}, ${inv4.max_watt || 50000}, '${JSON.stringify([
+          { id: "srv-1", name: "Service charge", price: 1500 },
+          { id: "srv-2", name: "Nationwide Heavy Logistics & Delivery", price: 3000 },
+          { id: "srv-3", name: "Full Turnkey Industrial EPC Installation", price: 5000 }
+        ])}', 5, TRUE);
+      `);
+    }
+
+    // 6. Solar Panels Catalog
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calculator_panels (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        inverter_id INT NULL,
+        area_id INT NULL,
+        name VARCHAR(191) NOT NULL,
+        name_bn VARCHAR(191) NULL,
+        model VARCHAR(191) NULL,
+        min_watt INT DEFAULT 0,
+        max_watt INT DEFAULT 0,
+        wattage INT DEFAULT 580,
+        price_bdt VARCHAR(100) NULL,
+        price_usd VARCHAR(100) NULL,
+        features JSON NULL,
+        efficiency VARCHAR(50) NULL,
+        warranty_years VARCHAR(50) DEFAULT '25 Years',
+        description TEXT NULL,
+        description_bn TEXT NULL,
+        order_index INT NOT NULL DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // Ensure columns on existing panels table
+    try {
+      const [panelCols]: any = await pool.query("SHOW COLUMNS FROM calculator_panels");
+      const panelColNames = panelCols.map((c: any) => c.Field);
+      if (!panelColNames.includes("inverter_id")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN inverter_id INT NULL");
+      if (!panelColNames.includes("area_id")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN area_id INT NULL");
+      if (!panelColNames.includes("name_bn")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN name_bn VARCHAR(191) NULL");
+      if (!panelColNames.includes("model")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN model VARCHAR(191) NULL");
+      if (!panelColNames.includes("min_watt")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN min_watt INT DEFAULT 0");
+      if (!panelColNames.includes("max_watt")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN max_watt INT DEFAULT 0");
+      if (!panelColNames.includes("wattage")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN wattage INT DEFAULT 580");
+      if (!panelColNames.includes("price_bdt")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN price_bdt VARCHAR(100) NULL");
+      if (!panelColNames.includes("price_usd")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN price_usd VARCHAR(100) NULL");
+      if (!panelColNames.includes("features")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN features JSON NULL");
+      if (!panelColNames.includes("efficiency")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN efficiency VARCHAR(50) NULL");
+      if (!panelColNames.includes("warranty_years")) await pool.query("ALTER TABLE calculator_panels ADD COLUMN warranty_years VARCHAR(50) DEFAULT '25 Years'");
+    } catch (_e) {}
+
+    // Check and seed panels
+    const [panelRows]: any = await pool.query("SELECT id FROM calculator_panels LIMIT 1");
+    if (!panelRows || panelRows.length === 0) {
+      const [allInverters]: any = await pool.query("SELECT id, min_watt, max_watt FROM calculator_recommendations ORDER BY min_watt ASC");
+      const [allAreas]: any = await pool.query("SELECT id FROM calculator_areas ORDER BY id ASC");
+      const inv0 = allInverters && allInverters[0] ? allInverters[0] : { id: null, min_watt: 0, max_watt: 600 };
+      const inv1 = allInverters && allInverters[1] ? allInverters[1] : inv0;
+      const inv2 = allInverters && allInverters[2] ? allInverters[2] : inv0;
+      const inv3 = allInverters && allInverters[3] ? allInverters[3] : inv0;
+      const area0 = allAreas && allAreas[0] ? allAreas[0].id : null;
+      const area1 = allAreas && allAreas[1] ? allAreas[1].id : null;
+
+      await pool.query(`
+        INSERT INTO calculator_panels (inverter_id, area_id, name, name_bn, model, min_watt, max_watt, wattage, price_bdt, price_usd, features, efficiency, warranty_years, description, description_bn, order_index, is_active) VALUES
+        (${inv0.id || 'NULL'}, ${area0 || 'NULL'}, 'Solvex 580W N-Type Bifacial TOPCon Module', 'সলভেক্স ৫৮০W বাইফেশিয়াল টপকন সোলার প্যানেল', 'Solvex TOPCon 580-BT', ${inv0.min_watt || 0}, ${inv0.max_watt || 600}, 580, '৳18,500', '$155', '${JSON.stringify([
+          "Up to 30% additional rear-side power gain",
+          "Ultra-low degradation N-Type silicon cells",
+          "Anti-PID & Anti-Salt/Ammonia resistant",
+          "Exceptional low-light morning/cloud performance"
+        ])}', '22.5%', '25-30 Years Linear Warranty', 'Premium bifacial N-type TOPCon module with superior high-temperature yield.', 'উচ্চ তাপমাত্রায় সর্বোচ্চ বিদ্যুৎ উৎপাদনকারী সর্বাধুনিক বাইফেশিয়াল সোলার প্যানেল।', 1, TRUE),
+        (${inv1.id || 'NULL'}, ${area1 || 'NULL'}, 'Solvex 650W Industrial Mono PERC High-Yield', 'সলভেক্স ৬৫০W ইন্ডাস্ট্রিয়াল মনো পার্ক প্যানেল', 'Solvex MegaPower 650M', ${inv1.min_watt || 601}, ${inv1.max_watt || 1200}, 650, '৳22,000', '$185', '${JSON.stringify([
+          "High power density for commercial rooftops",
+          "Half-cut cell design minimizes shading loss",
+          "Heavy duty 5400Pa snow & 2400Pa wind rating",
+          "IP68 junction box with bypass diodes"
+        ])}', '21.6%', '25 Years Performance Warranty', 'Heavy duty commercial rooftop panel engineered for industrial plants.', 'বাণিজ্যিক ও বৃহৎ কারখানার ছাদের জন্য উচ্চ ক্ষমতাসম্পন্ন হেভি ডিউটি সোলার প্যানেল।', 2, TRUE),
+        (${inv2.id || 'NULL'}, NULL, 'Solvex 400W All-Black Architectural Residential Panel', 'সলভেক্স ৪০০W অল-ব্ল্যাক প্রিমিয়াম প্যানেল', 'Solvex Elegance 400-BLK', ${inv2.min_watt || 1201}, ${inv2.max_watt || 2500}, 400, '৳14,000', '$118', '${JSON.stringify([
+          "Sleek aesthetic full-black appearance for modern villas",
+          "Compact size fits complex roof geometries",
+          "Integrated smart MC4 compatible connectors",
+          "Positive power tolerance 0 to +5W"
+        ])}', '20.8%', '25 Years Full Warranty', 'Architectural all-black panel designed for luxury villas and residential rooftops.', 'আধুনিক ভিলা ও অভিজাত বাড়ির জন্য দৃষ্টিনন্দন সম্পূর্ণ কালো সোলার প্যানেল।', 3, TRUE),
+        (${inv3.id || 'NULL'}, NULL, 'Solvex 700W Ultra High-Yield Utility Scale TOPCon', 'সলভেক্স ৭০০W আল্ট্রা মেগা টপকন প্যানেল', 'Solvex Titan 700-TOP', ${inv3.min_watt || 2501}, ${inv3.max_watt || 6000}, 700, '৳24,500', '$205', '${JSON.stringify([
+          "Engineered for mega utility plants and factory sheds",
+          "Lowest Levelized Cost of Electricity (LCOE)",
+          "Double-glass frameless durability",
+          "Next-gen multi-busbar (SMBB) technology"
+        ])}', '22.8%', '30 Years Performance Guarantee', 'Ultra high-output megawatt module delivering industry lowest LCOE.', 'মেগা সোলার প্ল্যান্ট ও বৃহৎ শেডের জন্য সর্বোচ্চ শক্তির আল্ট্রা টপকন প্যানেল।', 4, TRUE);
+      `);
+    }
+
     tablesInitialized = true;
   } catch (error) {
     console.error("ensureCalculatorTables error:", error);
@@ -226,13 +419,31 @@ export const getPublicCalculatorData = async (_req: Request, res: Response): Pro
       }
     }
 
-    // Parse solar types benefits if string
+    // Parse solar types benefits & features if string
     for (const st of solarTypes) {
       if (typeof st.benefits === "string") {
         try {
           st.benefits = JSON.parse(st.benefits);
         } catch {
           st.benefits = [];
+        }
+      }
+      if (typeof st.features === "string") {
+        try {
+          st.features = JSON.parse(st.features);
+        } catch {
+          st.features = [];
+        }
+      }
+    }
+
+    // Parse battery types features if string
+    for (const bt of batteryTypes) {
+      if (typeof bt.features === "string") {
+        try {
+          bt.features = JSON.parse(bt.features);
+        } catch {
+          bt.features = [];
         }
       }
     }
@@ -270,6 +481,48 @@ export const getPublicCalculatorData = async (_req: Request, res: Response): Pro
       };
     });
 
+    // 5. Fetch active areas
+    const [areas]: any = await pool.query(
+      `SELECT a.*, r.title as inverter_title, r.recommended_inverter_kw, r.recommended_inverter_model
+       FROM calculator_areas a
+       LEFT JOIN calculator_recommendations r ON a.inverter_id = r.id
+       WHERE a.is_active = TRUE
+       ORDER BY a.order_index ASC, a.id ASC`
+    );
+    for (const a of areas) {
+      if (typeof a.services === "string") {
+        try {
+          a.services = JSON.parse(a.services);
+        } catch {
+          a.services = [];
+        }
+      }
+    }
+
+    // 6. Fetch active panels
+    const [panels]: any = await pool.query(
+      `SELECT p.*,
+              r.title as inverter_title,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              a.name as area_name,
+              a.name_bn as area_name_bn
+       FROM calculator_panels p
+       LEFT JOIN calculator_recommendations r ON p.inverter_id = r.id
+       LEFT JOIN calculator_areas a ON p.area_id = a.id
+       WHERE p.is_active = TRUE
+       ORDER BY p.order_index ASC, p.id ASC`
+    );
+    for (const p of panels) {
+      if (typeof p.features === "string") {
+        try {
+          p.features = JSON.parse(p.features);
+        } catch {
+          p.features = [];
+        }
+      }
+    }
+
     res.json({
       success: true,
       data: {
@@ -277,6 +530,8 @@ export const getPublicCalculatorData = async (_req: Request, res: Response): Pro
         solarTypes,
         batteryTypes,
         recommendations: enrichedRecommendations,
+        areas,
+        panels,
       },
     });
   } catch (error: any) {
@@ -439,12 +694,22 @@ export const deleteAppliance = async (req: AuthenticatedRequest, res: Response):
 export const getSolarTypes = async (_req: Request, res: Response): Promise<void> => {
   try {
     await ensureCalculatorTables();
-    const [rows]: any = await pool.query(
-      "SELECT * FROM calculator_solar_types ORDER BY order_index ASC, id ASC"
-    );
+    const [rows]: any = await pool.query(`
+      SELECT s.*, 
+             r.title AS inverter_title, 
+             r.title_bn AS inverter_title_bn,
+             r.recommended_inverter_kw,
+             r.recommended_inverter_model,
+             r.min_watt AS inverter_min_watt,
+             r.max_watt AS inverter_max_watt
+      FROM calculator_solar_types s
+      LEFT JOIN calculator_recommendations r ON s.inverter_id = r.id
+      ORDER BY s.order_index ASC, s.id ASC
+    `);
     const parsed = rows.map((r: any) => ({
       ...r,
-      benefits: typeof r.benefits === "string" ? JSON.parse(r.benefits) : r.benefits,
+      benefits: typeof r.benefits === "string" ? JSON.parse(r.benefits) : (r.benefits || []),
+      features: typeof r.features === "string" ? JSON.parse(r.features) : (r.features || r.benefits || []),
     }));
     res.json({ success: true, data: parsed });
   } catch (error: any) {
@@ -456,42 +721,60 @@ export const createSolarType = async (req: AuthenticatedRequest, res: Response):
   try {
     await ensureCalculatorTables();
     const {
+      inverter_id,
       name,
       name_bn,
       system_code,
       tagline,
       description,
       description_bn,
+      features,
       benefits,
       badge,
-      min_recommended_watts = 500,
+      min_watt,
+      max_watt,
+      model,
+      price_bdt,
+      price_usd,
+      min_recommended_watts,
       efficiency_factor = 0.85,
       order_index = 0,
       is_active = true,
     } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ success: false, message: "Solar type name is required." });
+      res.status(400).json({ success: false, message: "Solar system name is required." });
       return;
     }
 
     const code = system_code || name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-    const benefitsJson = Array.isArray(benefits) ? JSON.stringify(benefits) : JSON.stringify([]);
+    const activeFeatures = features || benefits || [];
+    const featuresJson = Array.isArray(activeFeatures) ? JSON.stringify(activeFeatures) : JSON.stringify([]);
+
+    const minW = min_watt !== undefined ? Number(min_watt) : (min_recommended_watts !== undefined ? Number(min_recommended_watts) : 500);
+    const maxW = max_watt !== undefined ? Number(max_watt) : 1000;
 
     const [result]: any = await pool.query(
       `INSERT INTO calculator_solar_types
-       (name, name_bn, system_code, tagline, description, description_bn, benefits, badge, min_recommended_watts, efficiency_factor, order_index, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (inverter_id, name, name_bn, system_code, min_watt, max_watt, model, price_bdt, price_usd, features, tagline, description, description_bn, benefits, badge, min_recommended_watts, efficiency_factor, order_index, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        inverter_id ? Number(inverter_id) : null,
         name.trim(),
         name_bn || null,
         code,
+        minW,
+        maxW,
+        model ? String(model).trim() : null,
+        price_bdt ? String(price_bdt).trim() : null,
+        price_usd ? String(price_usd).trim() : null,
+        featuresJson,
         tagline || null,
         description || null,
         description_bn || null,
-        benefitsJson,
+        featuresJson,
         badge || null,
-        Number(min_recommended_watts) || 500,
+        minW,
         Number(efficiency_factor) || 0.85,
         Number(order_index) || 0,
         is_active ? 1 : 0,
@@ -499,10 +782,24 @@ export const createSolarType = async (req: AuthenticatedRequest, res: Response):
     );
 
     const [created]: any = await pool.query(
-      "SELECT * FROM calculator_solar_types WHERE id = ?",
+      `SELECT s.*, 
+              r.title AS inverter_title, 
+              r.title_bn AS inverter_title_bn,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              r.min_watt AS inverter_min_watt,
+              r.max_watt AS inverter_max_watt
+       FROM calculator_solar_types s
+       LEFT JOIN calculator_recommendations r ON s.inverter_id = r.id
+       WHERE s.id = ?`,
       [result.insertId]
     );
-    res.status(201).json({ success: true, data: created[0] });
+    const parsed = {
+      ...created[0],
+      benefits: typeof created[0].benefits === "string" ? JSON.parse(created[0].benefits) : (created[0].benefits || []),
+      features: typeof created[0].features === "string" ? JSON.parse(created[0].features) : (created[0].features || []),
+    };
+    res.status(201).json({ success: true, data: parsed });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -513,31 +810,60 @@ export const updateSolarType = async (req: AuthenticatedRequest, res: Response):
     await ensureCalculatorTables();
     const { id } = req.params;
     const {
+      inverter_id,
       name,
       name_bn,
       system_code,
       tagline,
       description,
       description_bn,
+      features,
       benefits,
       badge,
+      min_watt,
+      max_watt,
+      model,
+      price_bdt,
+      price_usd,
       min_recommended_watts,
       efficiency_factor,
       order_index,
       is_active,
     } = req.body;
 
-    const benefitsJson = benefits !== undefined ? (Array.isArray(benefits) ? JSON.stringify(benefits) : benefits) : null;
+    const [existingRows]: any = await pool.query("SELECT * FROM calculator_solar_types WHERE id = ?", [id]);
+    if (!existingRows || existingRows.length === 0) {
+      res.status(404).json({ success: false, message: "Solar type not found." });
+      return;
+    }
+    const existing = existingRows[0];
+
+    let featuresJson = existing.features;
+    if (features !== undefined) {
+      featuresJson = Array.isArray(features) ? JSON.stringify(features) : features;
+    } else if (benefits !== undefined) {
+      featuresJson = Array.isArray(benefits) ? JSON.stringify(benefits) : benefits;
+    }
+
+    const minW = min_watt !== undefined ? Number(min_watt) : (min_recommended_watts !== undefined ? Number(min_recommended_watts) : existing.min_watt);
+    const maxW = max_watt !== undefined ? Number(max_watt) : existing.max_watt;
 
     await pool.query(
       `UPDATE calculator_solar_types SET
+        inverter_id = COALESCE(?, inverter_id),
         name = COALESCE(?, name),
         name_bn = COALESCE(?, name_bn),
         system_code = COALESCE(?, system_code),
+        min_watt = COALESCE(?, min_watt),
+        max_watt = COALESCE(?, max_watt),
+        model = COALESCE(?, model),
+        price_bdt = COALESCE(?, price_bdt),
+        price_usd = COALESCE(?, price_usd),
+        features = COALESCE(?, features),
+        benefits = COALESCE(?, benefits),
         tagline = COALESCE(?, tagline),
         description = COALESCE(?, description),
         description_bn = COALESCE(?, description_bn),
-        benefits = COALESCE(?, benefits),
         badge = COALESCE(?, badge),
         min_recommended_watts = COALESCE(?, min_recommended_watts),
         efficiency_factor = COALESCE(?, efficiency_factor),
@@ -545,15 +871,22 @@ export const updateSolarType = async (req: AuthenticatedRequest, res: Response):
         is_active = COALESCE(?, is_active)
        WHERE id = ?`,
       [
+        inverter_id !== undefined ? (inverter_id ? Number(inverter_id) : null) : null,
         name,
         name_bn,
         system_code,
+        minW,
+        maxW,
+        model,
+        price_bdt,
+        price_usd,
+        featuresJson,
+        featuresJson,
         tagline,
         description,
         description_bn,
-        benefitsJson,
         badge,
-        min_recommended_watts,
+        minW,
         efficiency_factor,
         order_index,
         is_active !== undefined ? (is_active ? 1 : 0) : null,
@@ -562,10 +895,24 @@ export const updateSolarType = async (req: AuthenticatedRequest, res: Response):
     );
 
     const [updated]: any = await pool.query(
-      "SELECT * FROM calculator_solar_types WHERE id = ?",
+      `SELECT s.*, 
+              r.title AS inverter_title, 
+              r.title_bn AS inverter_title_bn,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              r.min_watt AS inverter_min_watt,
+              r.max_watt AS inverter_max_watt
+       FROM calculator_solar_types s
+       LEFT JOIN calculator_recommendations r ON s.inverter_id = r.id
+       WHERE s.id = ?`,
       [id]
     );
-    res.json({ success: true, data: updated[0] });
+    const parsed = {
+      ...updated[0],
+      benefits: typeof updated[0].benefits === "string" ? JSON.parse(updated[0].benefits) : (updated[0].benefits || []),
+      features: typeof updated[0].features === "string" ? JSON.parse(updated[0].features) : (updated[0].features || []),
+    };
+    res.json({ success: true, data: parsed });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -590,9 +937,22 @@ export const getBatteryTypes = async (_req: Request, res: Response): Promise<voi
   try {
     await ensureCalculatorTables();
     const [rows]: any = await pool.query(
-      "SELECT * FROM calculator_battery_types ORDER BY order_index ASC, id ASC"
+      `SELECT b.*, 
+              r.title AS inverter_title, 
+              r.title_bn AS inverter_title_bn,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              r.min_watt AS inverter_min_watt,
+              r.max_watt AS inverter_max_watt
+       FROM calculator_battery_types b
+       LEFT JOIN calculator_recommendations r ON b.inverter_id = r.id
+       ORDER BY b.order_index ASC, b.id ASC`
     );
-    res.json({ success: true, data: rows });
+    const parsed = rows.map((b: any) => ({
+      ...b,
+      features: typeof b.features === "string" ? JSON.parse(b.features) : (b.features || []),
+    }));
+    res.json({ success: true, data: parsed });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -602,9 +962,16 @@ export const createBatteryType = async (req: AuthenticatedRequest, res: Response
   try {
     await ensureCalculatorTables();
     const {
+      inverter_id,
       name,
       name_bn,
       battery_code,
+      min_watt,
+      max_watt,
+      model,
+      price_bdt,
+      price_usd,
+      features,
       tagline,
       description,
       description_bn,
@@ -623,15 +990,25 @@ export const createBatteryType = async (req: AuthenticatedRequest, res: Response
     }
 
     const code = battery_code || name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    const featuresJson = Array.isArray(features) ? JSON.stringify(features) : JSON.stringify([]);
+    const minW = min_watt !== undefined ? Number(min_watt) : 0;
+    const maxW = max_watt !== undefined ? Number(max_watt) : 1000;
 
     const [result]: any = await pool.query(
       `INSERT INTO calculator_battery_types
-       (name, name_bn, battery_code, tagline, description, description_bn, depth_of_discharge, lifespan_years, cycle_life, maintenance, badge, order_index, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (inverter_id, name, name_bn, battery_code, min_watt, max_watt, model, price_bdt, price_usd, features, tagline, description, description_bn, depth_of_discharge, lifespan_years, cycle_life, maintenance, badge, order_index, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        inverter_id ? Number(inverter_id) : null,
         name.trim(),
         name_bn || null,
         code,
+        minW,
+        maxW,
+        model ? String(model).trim() : null,
+        price_bdt ? String(price_bdt).trim() : null,
+        price_usd ? String(price_usd).trim() : null,
+        featuresJson,
         tagline || null,
         description || null,
         description_bn || null,
@@ -646,10 +1023,23 @@ export const createBatteryType = async (req: AuthenticatedRequest, res: Response
     );
 
     const [created]: any = await pool.query(
-      "SELECT * FROM calculator_battery_types WHERE id = ?",
+      `SELECT b.*, 
+              r.title AS inverter_title, 
+              r.title_bn AS inverter_title_bn,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              r.min_watt AS inverter_min_watt,
+              r.max_watt AS inverter_max_watt
+       FROM calculator_battery_types b
+       LEFT JOIN calculator_recommendations r ON b.inverter_id = r.id
+       WHERE b.id = ?`,
       [result.insertId]
     );
-    res.status(201).json({ success: true, data: created[0] });
+    const parsed = {
+      ...created[0],
+      features: typeof created[0].features === "string" ? JSON.parse(created[0].features) : (created[0].features || []),
+    };
+    res.status(201).json({ success: true, data: parsed });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -660,9 +1050,16 @@ export const updateBatteryType = async (req: AuthenticatedRequest, res: Response
     await ensureCalculatorTables();
     const { id } = req.params;
     const {
+      inverter_id,
       name,
       name_bn,
       battery_code,
+      min_watt,
+      max_watt,
+      model,
+      price_bdt,
+      price_usd,
+      features,
       tagline,
       description,
       description_bn,
@@ -675,11 +1072,33 @@ export const updateBatteryType = async (req: AuthenticatedRequest, res: Response
       is_active,
     } = req.body;
 
+    const [existingRows]: any = await pool.query("SELECT * FROM calculator_battery_types WHERE id = ?", [id]);
+    if (!existingRows || existingRows.length === 0) {
+      res.status(404).json({ success: false, message: "Battery type not found." });
+      return;
+    }
+    const existing = existingRows[0];
+
+    let featuresJson = existing.features;
+    if (features !== undefined) {
+      featuresJson = Array.isArray(features) ? JSON.stringify(features) : features;
+    }
+
+    const minW = min_watt !== undefined ? Number(min_watt) : existing.min_watt;
+    const maxW = max_watt !== undefined ? Number(max_watt) : existing.max_watt;
+
     await pool.query(
       `UPDATE calculator_battery_types SET
+        inverter_id = COALESCE(?, inverter_id),
         name = COALESCE(?, name),
         name_bn = COALESCE(?, name_bn),
         battery_code = COALESCE(?, battery_code),
+        min_watt = COALESCE(?, min_watt),
+        max_watt = COALESCE(?, max_watt),
+        model = COALESCE(?, model),
+        price_bdt = COALESCE(?, price_bdt),
+        price_usd = COALESCE(?, price_usd),
+        features = COALESCE(?, features),
         tagline = COALESCE(?, tagline),
         description = COALESCE(?, description),
         description_bn = COALESCE(?, description_bn),
@@ -692,9 +1111,16 @@ export const updateBatteryType = async (req: AuthenticatedRequest, res: Response
         is_active = COALESCE(?, is_active)
        WHERE id = ?`,
       [
+        inverter_id !== undefined ? (inverter_id ? Number(inverter_id) : null) : null,
         name,
         name_bn,
         battery_code,
+        minW,
+        maxW,
+        model,
+        price_bdt,
+        price_usd,
+        featuresJson,
         tagline,
         description,
         description_bn,
@@ -710,10 +1136,23 @@ export const updateBatteryType = async (req: AuthenticatedRequest, res: Response
     );
 
     const [updated]: any = await pool.query(
-      "SELECT * FROM calculator_battery_types WHERE id = ?",
+      `SELECT b.*, 
+              r.title AS inverter_title, 
+              r.title_bn AS inverter_title_bn,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              r.min_watt AS inverter_min_watt,
+              r.max_watt AS inverter_max_watt
+       FROM calculator_battery_types b
+       LEFT JOIN calculator_recommendations r ON b.inverter_id = r.id
+       WHERE b.id = ?`,
       [id]
     );
-    res.json({ success: true, data: updated[0] });
+    const parsed = {
+      ...updated[0],
+      features: typeof updated[0].features === "string" ? JSON.parse(updated[0].features) : (updated[0].features || []),
+    };
+    res.json({ success: true, data: parsed });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -775,12 +1214,12 @@ export const createRecommendation = async (req: AuthenticatedRequest, res: Respo
       is_active = true,
     } = req.body;
 
-    if (!title || !title.trim()) {
-      res.status(400).json({ success: false, message: "Recommendation title is required." });
+    if (!title || !String(title).trim()) {
+      res.status(400).json({ success: false, message: "Inverter name is required." });
       return;
     }
-    if (min_watt === undefined || max_watt === undefined) {
-      res.status(400).json({ success: false, message: "Min Watt and Max Watt ranges are required." });
+    if (min_watt === undefined || max_watt === undefined || min_watt === null || max_watt === null) {
+      res.status(400).json({ success: false, message: "Range Min and Range Max are required." });
       return;
     }
 
@@ -792,22 +1231,22 @@ export const createRecommendation = async (req: AuthenticatedRequest, res: Respo
        (title, title_bn, min_watt, max_watt, recommended_solar_kw, recommended_panels_count, recommended_panel_model, recommended_inverter_kw, recommended_inverter_model, recommended_battery_capacity, package_features, description, description_bn, suggested_product_ids, estimated_cost_bdt, estimated_cost_usd, order_index, is_active)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        title.trim(),
-        title_bn || null,
-        Number(min_watt),
-        Number(max_watt),
+        String(title).trim(),
+        title_bn ? String(title_bn).trim() : null,
+        Number(min_watt) || 0,
+        Number(max_watt) || 0,
         Number(recommended_solar_kw) || 1.5,
         Number(recommended_panels_count) || 3,
-        recommended_panel_model || null,
+        recommended_panel_model ? String(recommended_panel_model).trim() : null,
         Number(recommended_inverter_kw) || 2.0,
-        recommended_inverter_model || null,
-        recommended_battery_capacity || null,
+        recommended_inverter_model ? String(recommended_inverter_model).trim() : null,
+        recommended_battery_capacity ? String(recommended_battery_capacity).trim() : null,
         featuresJson,
-        description || null,
-        description_bn || null,
+        description ? String(description).trim() : null,
+        description_bn ? String(description_bn).trim() : null,
         productIdsJson,
-        estimated_cost_bdt || null,
-        estimated_cost_usd || null,
+        estimated_cost_bdt ? String(estimated_cost_bdt).trim() : null,
+        estimated_cost_usd ? String(estimated_cost_usd).trim() : null,
         Number(order_index) || 0,
         is_active ? 1 : 0,
       ]
@@ -817,7 +1256,14 @@ export const createRecommendation = async (req: AuthenticatedRequest, res: Respo
       "SELECT * FROM calculator_recommendations WHERE id = ?",
       [result.insertId]
     );
-    res.status(201).json({ success: true, data: created[0] });
+
+    const parsed = {
+      ...created[0],
+      package_features: typeof created[0].package_features === "string" ? JSON.parse(created[0].package_features) : created[0].package_features,
+      suggested_product_ids: typeof created[0].suggested_product_ids === "string" ? JSON.parse(created[0].suggested_product_ids) : created[0].suggested_product_ids,
+    };
+
+    res.status(201).json({ success: true, data: parsed });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -848,49 +1294,94 @@ export const updateRecommendation = async (req: AuthenticatedRequest, res: Respo
       is_active,
     } = req.body;
 
-    const featuresJson = package_features !== undefined ? (Array.isArray(package_features) ? JSON.stringify(package_features) : package_features) : null;
-    const productIdsJson = suggested_product_ids !== undefined ? (Array.isArray(suggested_product_ids) ? JSON.stringify(suggested_product_ids) : suggested_product_ids) : null;
+    const [existingRows]: any = await pool.query("SELECT * FROM calculator_recommendations WHERE id = ?", [id]);
+    if (!existingRows || existingRows.length === 0) {
+      res.status(404).json({ success: false, message: "Inverter configuration not found." });
+      return;
+    }
+    const existing = existingRows[0];
+
+    const updatedTitle = title !== undefined ? String(title).trim() : existing.title;
+    const updatedTitleBn = title_bn !== undefined ? (title_bn ? String(title_bn).trim() : null) : existing.title_bn;
+    const updatedMinWatt = min_watt !== undefined ? Number(min_watt) : existing.min_watt;
+    const updatedMaxWatt = max_watt !== undefined ? Number(max_watt) : existing.max_watt;
+    const updatedSolarKw = recommended_solar_kw !== undefined ? Number(recommended_solar_kw) : existing.recommended_solar_kw;
+    const updatedPanelsCount = recommended_panels_count !== undefined ? Number(recommended_panels_count) : existing.recommended_panels_count;
+    const updatedPanelModel = recommended_panel_model !== undefined ? (recommended_panel_model ? String(recommended_panel_model).trim() : null) : existing.recommended_panel_model;
+    const updatedInverterKw = recommended_inverter_kw !== undefined ? Number(recommended_inverter_kw) : existing.recommended_inverter_kw;
+    const updatedInverterModel = recommended_inverter_model !== undefined ? (recommended_inverter_model ? String(recommended_inverter_model).trim() : null) : existing.recommended_inverter_model;
+    const updatedBatteryCap = recommended_battery_capacity !== undefined ? (recommended_battery_capacity ? String(recommended_battery_capacity).trim() : null) : existing.recommended_battery_capacity;
+
+    let updatedFeaturesJson: string | null = null;
+    if (package_features !== undefined) {
+      updatedFeaturesJson = Array.isArray(package_features)
+        ? JSON.stringify(package_features)
+        : (typeof package_features === "string" ? package_features : JSON.stringify([]));
+    } else if (existing.package_features !== null && existing.package_features !== undefined) {
+      updatedFeaturesJson = typeof existing.package_features === "string"
+        ? existing.package_features
+        : JSON.stringify(existing.package_features);
+    }
+
+    const updatedDescription = description !== undefined ? (description ? String(description).trim() : null) : existing.description;
+    const updatedDescriptionBn = description_bn !== undefined ? (description_bn ? String(description_bn).trim() : null) : existing.description_bn;
+
+    let updatedProductIdsJson: string | null = null;
+    if (suggested_product_ids !== undefined) {
+      updatedProductIdsJson = Array.isArray(suggested_product_ids)
+        ? JSON.stringify(suggested_product_ids)
+        : (typeof suggested_product_ids === "string" ? suggested_product_ids : JSON.stringify([]));
+    } else if (existing.suggested_product_ids !== null && existing.suggested_product_ids !== undefined) {
+      updatedProductIdsJson = typeof existing.suggested_product_ids === "string"
+        ? existing.suggested_product_ids
+        : JSON.stringify(existing.suggested_product_ids);
+    }
+
+    const updatedCostBdt = estimated_cost_bdt !== undefined ? (estimated_cost_bdt ? String(estimated_cost_bdt).trim() : null) : existing.estimated_cost_bdt;
+    const updatedCostUsd = estimated_cost_usd !== undefined ? (estimated_cost_usd ? String(estimated_cost_usd).trim() : null) : existing.estimated_cost_usd;
+    const updatedOrderIndex = order_index !== undefined ? Number(order_index) : existing.order_index;
+    const updatedIsActive = is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active;
 
     await pool.query(
       `UPDATE calculator_recommendations SET
-        title = COALESCE(?, title),
-        title_bn = COALESCE(?, title_bn),
-        min_watt = COALESCE(?, min_watt),
-        max_watt = COALESCE(?, max_watt),
-        recommended_solar_kw = COALESCE(?, recommended_solar_kw),
-        recommended_panels_count = COALESCE(?, recommended_panels_count),
-        recommended_panel_model = COALESCE(?, recommended_panel_model),
-        recommended_inverter_kw = COALESCE(?, recommended_inverter_kw),
-        recommended_inverter_model = COALESCE(?, recommended_inverter_model),
-        recommended_battery_capacity = COALESCE(?, recommended_battery_capacity),
-        package_features = COALESCE(?, package_features),
-        description = COALESCE(?, description),
-        description_bn = COALESCE(?, description_bn),
-        suggested_product_ids = COALESCE(?, suggested_product_ids),
-        estimated_cost_bdt = COALESCE(?, estimated_cost_bdt),
-        estimated_cost_usd = COALESCE(?, estimated_cost_usd),
-        order_index = COALESCE(?, order_index),
-        is_active = COALESCE(?, is_active)
+        title = ?,
+        title_bn = ?,
+        min_watt = ?,
+        max_watt = ?,
+        recommended_solar_kw = ?,
+        recommended_panels_count = ?,
+        recommended_panel_model = ?,
+        recommended_inverter_kw = ?,
+        recommended_inverter_model = ?,
+        recommended_battery_capacity = ?,
+        package_features = ?,
+        description = ?,
+        description_bn = ?,
+        suggested_product_ids = ?,
+        estimated_cost_bdt = ?,
+        estimated_cost_usd = ?,
+        order_index = ?,
+        is_active = ?
        WHERE id = ?`,
       [
-        title,
-        title_bn,
-        min_watt,
-        max_watt,
-        recommended_solar_kw,
-        recommended_panels_count,
-        recommended_panel_model,
-        recommended_inverter_kw,
-        recommended_inverter_model,
-        recommended_battery_capacity,
-        featuresJson,
-        description,
-        description_bn,
-        productIdsJson,
-        estimated_cost_bdt,
-        estimated_cost_usd,
-        order_index,
-        is_active !== undefined ? (is_active ? 1 : 0) : null,
+        updatedTitle,
+        updatedTitleBn,
+        updatedMinWatt,
+        updatedMaxWatt,
+        updatedSolarKw,
+        updatedPanelsCount,
+        updatedPanelModel,
+        updatedInverterKw,
+        updatedInverterModel,
+        updatedBatteryCap,
+        updatedFeaturesJson,
+        updatedDescription,
+        updatedDescriptionBn,
+        updatedProductIdsJson,
+        updatedCostBdt,
+        updatedCostUsd,
+        updatedOrderIndex,
+        updatedIsActive,
         id,
       ]
     );
@@ -899,7 +1390,14 @@ export const updateRecommendation = async (req: AuthenticatedRequest, res: Respo
       "SELECT * FROM calculator_recommendations WHERE id = ?",
       [id]
     );
-    res.json({ success: true, data: updated[0] });
+
+    const parsed = {
+      ...updated[0],
+      package_features: typeof updated[0].package_features === "string" ? JSON.parse(updated[0].package_features) : updated[0].package_features,
+      suggested_product_ids: typeof updated[0].suggested_product_ids === "string" ? JSON.parse(updated[0].suggested_product_ids) : updated[0].suggested_product_ids,
+    };
+
+    res.json({ success: true, data: parsed });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -909,9 +1407,485 @@ export const deleteRecommendation = async (req: AuthenticatedRequest, res: Respo
   try {
     await ensureCalculatorTables();
     const { id } = req.params;
+    const [existing]: any = await pool.query("SELECT id FROM calculator_recommendations WHERE id = ?", [id]);
+    if (!existing || existing.length === 0) {
+      res.status(404).json({ success: false, message: "Inverter not found." });
+      return;
+    }
     await pool.query("DELETE FROM calculator_recommendations WHERE id = ?", [id]);
-    res.json({ success: true, message: "Recommendation deleted successfully." });
+    res.json({ success: true, message: "Inverter deleted successfully." });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// ==========================================
+// INSTALLATION AREAS & DYNAMIC SERVICES CRUD (ADMIN)
+// ==========================================
+
+export const getAreas = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const [rows]: any = await pool.query(
+      `SELECT a.*, r.title as inverter_title, r.recommended_inverter_kw, r.recommended_inverter_model
+       FROM calculator_areas a
+       LEFT JOIN calculator_recommendations r ON a.inverter_id = r.id
+       ORDER BY a.order_index ASC, a.id ASC`
+    );
+    const parsed = rows.map((r: any) => ({
+      ...r,
+      services: typeof r.services === "string" ? JSON.parse(r.services) : (r.services || []),
+    }));
+    res.json({ success: true, data: parsed });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createArea = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const {
+      inverter_id,
+      name,
+      name_bn,
+      min_watt,
+      max_watt,
+      services,
+      order_index,
+      is_active,
+    } = req.body;
+
+    if (!name || !String(name).trim()) {
+      res.status(400).json({ success: false, message: "Area name is required." });
+      return;
+    }
+
+    let servicesJson: string | null = null;
+    if (services !== undefined) {
+      servicesJson = Array.isArray(services)
+        ? JSON.stringify(services)
+        : (typeof services === "string" ? services : JSON.stringify([]));
+    } else {
+      servicesJson = JSON.stringify([]);
+    }
+
+    const [result]: any = await pool.query(
+      `INSERT INTO calculator_areas (
+        inverter_id,
+        name,
+        name_bn,
+        min_watt,
+        max_watt,
+        services,
+        order_index,
+        is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        inverter_id ? Number(inverter_id) : null,
+        String(name).trim(),
+        name_bn ? String(name_bn).trim() : null,
+        min_watt !== undefined ? Number(min_watt) : 0,
+        max_watt !== undefined ? Number(max_watt) : 0,
+        servicesJson,
+        order_index !== undefined ? Number(order_index) : 0,
+        is_active !== undefined ? (is_active ? 1 : 0) : 1,
+      ]
+    );
+
+    const [created]: any = await pool.query(
+      `SELECT a.*, r.title as inverter_title, r.recommended_inverter_kw, r.recommended_inverter_model
+       FROM calculator_areas a
+       LEFT JOIN calculator_recommendations r ON a.inverter_id = r.id
+       WHERE a.id = ?`,
+      [result.insertId]
+    );
+
+    const parsed = {
+      ...created[0],
+      services: typeof created[0].services === "string" ? JSON.parse(created[0].services) : (created[0].services || []),
+    };
+
+    res.status(201).json({ success: true, data: parsed });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateArea = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const { id } = req.params;
+    const {
+      inverter_id,
+      name,
+      name_bn,
+      min_watt,
+      max_watt,
+      services,
+      order_index,
+      is_active,
+    } = req.body;
+
+    const [existingRows]: any = await pool.query("SELECT * FROM calculator_areas WHERE id = ?", [id]);
+    if (!existingRows || existingRows.length === 0) {
+      res.status(404).json({ success: false, message: "Installation area not found." });
+      return;
+    }
+    const existing = existingRows[0];
+
+    const updatedInverterId = inverter_id !== undefined ? (inverter_id ? Number(inverter_id) : null) : existing.inverter_id;
+    const updatedName = name !== undefined ? String(name).trim() : existing.name;
+    const updatedNameBn = name_bn !== undefined ? (name_bn ? String(name_bn).trim() : null) : existing.name_bn;
+    const updatedMinWatt = min_watt !== undefined ? Number(min_watt) : existing.min_watt;
+    const updatedMaxWatt = max_watt !== undefined ? Number(max_watt) : existing.max_watt;
+
+    let updatedServicesJson: string | null = null;
+    if (services !== undefined) {
+      updatedServicesJson = Array.isArray(services)
+        ? JSON.stringify(services)
+        : (typeof services === "string" ? services : JSON.stringify([]));
+    } else if (existing.services !== null && existing.services !== undefined) {
+      updatedServicesJson = typeof existing.services === "string"
+        ? existing.services
+        : JSON.stringify(existing.services);
+    }
+
+    const updatedOrderIndex = order_index !== undefined ? Number(order_index) : existing.order_index;
+    const updatedIsActive = is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active;
+
+    await pool.query(
+      `UPDATE calculator_areas SET
+        inverter_id = ?,
+        name = ?,
+        name_bn = ?,
+        min_watt = ?,
+        max_watt = ?,
+        services = ?,
+        order_index = ?,
+        is_active = ?
+       WHERE id = ?`,
+      [
+        updatedInverterId,
+        updatedName,
+        updatedNameBn,
+        updatedMinWatt,
+        updatedMaxWatt,
+        updatedServicesJson,
+        updatedOrderIndex,
+        updatedIsActive,
+        id,
+      ]
+    );
+
+    const [updated]: any = await pool.query(
+      `SELECT a.*, r.title as inverter_title, r.recommended_inverter_kw, r.recommended_inverter_model
+       FROM calculator_areas a
+       LEFT JOIN calculator_recommendations r ON a.inverter_id = r.id
+       WHERE a.id = ?`,
+      [id]
+    );
+
+    const parsed = {
+      ...updated[0],
+      services: typeof updated[0].services === "string" ? JSON.parse(updated[0].services) : (updated[0].services || []),
+    };
+
+    res.json({ success: true, data: parsed });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteArea = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const { id } = req.params;
+    const [existing]: any = await pool.query("SELECT id FROM calculator_areas WHERE id = ?", [id]);
+    if (!existing || existing.length === 0) {
+      res.status(404).json({ success: false, message: "Installation area not found." });
+      return;
+    }
+    await pool.query("DELETE FROM calculator_areas WHERE id = ?", [id]);
+    res.json({ success: true, message: "Installation area deleted successfully." });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ==========================================
+// SOLAR PANELS CRUD (ADMIN)
+// ==========================================
+
+export const getPanels = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const [rows]: any = await pool.query(
+      `SELECT p.*,
+              r.title as inverter_title,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              a.name as area_name,
+              a.name_bn as area_name_bn
+       FROM calculator_panels p
+       LEFT JOIN calculator_recommendations r ON p.inverter_id = r.id
+       LEFT JOIN calculator_areas a ON p.area_id = a.id
+       ORDER BY p.order_index ASC, p.id ASC`
+    );
+    const parsed = rows.map((r: any) => ({
+      ...r,
+      features: typeof r.features === "string" ? JSON.parse(r.features) : (r.features || []),
+    }));
+    res.json({ success: true, data: parsed });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createPanel = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const {
+      inverter_id,
+      area_id,
+      name,
+      name_bn,
+      model,
+      min_watt,
+      max_watt,
+      wattage,
+      price_bdt,
+      price_usd,
+      features,
+      efficiency,
+      warranty_years,
+      description,
+      description_bn,
+      order_index,
+      is_active,
+    } = req.body;
+
+    if (!name || !String(name).trim()) {
+      res.status(400).json({ success: false, message: "Solar Panel name is required." });
+      return;
+    }
+
+    let featuresJson: string | null = null;
+    if (features !== undefined) {
+      featuresJson = Array.isArray(features)
+        ? JSON.stringify(features)
+        : (typeof features === "string" ? features : JSON.stringify([]));
+    } else {
+      featuresJson = JSON.stringify([]);
+    }
+
+    const [result]: any = await pool.query(
+      `INSERT INTO calculator_panels (
+        inverter_id,
+        area_id,
+        name,
+        name_bn,
+        model,
+        min_watt,
+        max_watt,
+        wattage,
+        price_bdt,
+        price_usd,
+        features,
+        efficiency,
+        warranty_years,
+        description,
+        description_bn,
+        order_index,
+        is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        inverter_id ? Number(inverter_id) : null,
+        area_id ? Number(area_id) : null,
+        String(name).trim(),
+        name_bn ? String(name_bn).trim() : null,
+        model ? String(model).trim() : null,
+        min_watt !== undefined ? Number(min_watt) : 0,
+        max_watt !== undefined ? Number(max_watt) : 0,
+        wattage !== undefined ? Number(wattage) : 580,
+        price_bdt ? String(price_bdt).trim() : null,
+        price_usd ? String(price_usd).trim() : null,
+        featuresJson,
+        efficiency ? String(efficiency).trim() : null,
+        warranty_years ? String(warranty_years).trim() : "25 Years",
+        description ? String(description).trim() : null,
+        description_bn ? String(description_bn).trim() : null,
+        order_index !== undefined ? Number(order_index) : 0,
+        is_active !== undefined ? (is_active ? 1 : 0) : 1,
+      ]
+    );
+
+    const [created]: any = await pool.query(
+      `SELECT p.*,
+              r.title as inverter_title,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              a.name as area_name,
+              a.name_bn as area_name_bn
+       FROM calculator_panels p
+       LEFT JOIN calculator_recommendations r ON p.inverter_id = r.id
+       LEFT JOIN calculator_areas a ON p.area_id = a.id
+       WHERE p.id = ?`,
+      [result.insertId]
+    );
+
+    const parsed = {
+      ...created[0],
+      features: typeof created[0].features === "string" ? JSON.parse(created[0].features) : (created[0].features || []),
+    };
+
+    res.status(201).json({ success: true, data: parsed });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updatePanel = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const { id } = req.params;
+    const {
+      inverter_id,
+      area_id,
+      name,
+      name_bn,
+      model,
+      min_watt,
+      max_watt,
+      wattage,
+      price_bdt,
+      price_usd,
+      features,
+      efficiency,
+      warranty_years,
+      description,
+      description_bn,
+      order_index,
+      is_active,
+    } = req.body;
+
+    const [existingRows]: any = await pool.query("SELECT * FROM calculator_panels WHERE id = ?", [id]);
+    if (!existingRows || existingRows.length === 0) {
+      res.status(404).json({ success: false, message: "Solar Panel not found." });
+      return;
+    }
+    const existing = existingRows[0];
+
+    const updatedInverterId = inverter_id !== undefined ? (inverter_id ? Number(inverter_id) : null) : existing.inverter_id;
+    const updatedAreaId = area_id !== undefined ? (area_id ? Number(area_id) : null) : existing.area_id;
+    const updatedName = name !== undefined ? String(name).trim() : existing.name;
+    const updatedNameBn = name_bn !== undefined ? (name_bn ? String(name_bn).trim() : null) : existing.name_bn;
+    const updatedModel = model !== undefined ? (model ? String(model).trim() : null) : existing.model;
+    const updatedMinWatt = min_watt !== undefined ? Number(min_watt) : existing.min_watt;
+    const updatedMaxWatt = max_watt !== undefined ? Number(max_watt) : existing.max_watt;
+    const updatedWattage = wattage !== undefined ? Number(wattage) : existing.wattage;
+    const updatedPriceBdt = price_bdt !== undefined ? (price_bdt ? String(price_bdt).trim() : null) : existing.price_bdt;
+    const updatedPriceUsd = price_usd !== undefined ? (price_usd ? String(price_usd).trim() : null) : existing.price_usd;
+
+    let updatedFeaturesJson: string | null = null;
+    if (features !== undefined) {
+      updatedFeaturesJson = Array.isArray(features)
+        ? JSON.stringify(features)
+        : (typeof features === "string" ? features : JSON.stringify([]));
+    } else if (existing.features !== null && existing.features !== undefined) {
+      updatedFeaturesJson = typeof existing.features === "string"
+        ? existing.features
+        : JSON.stringify(existing.features);
+    }
+
+    const updatedEfficiency = efficiency !== undefined ? (efficiency ? String(efficiency).trim() : null) : existing.efficiency;
+    const updatedWarranty = warranty_years !== undefined ? (warranty_years ? String(warranty_years).trim() : null) : existing.warranty_years;
+    const updatedDescription = description !== undefined ? (description ? String(description).trim() : null) : existing.description;
+    const updatedDescriptionBn = description_bn !== undefined ? (description_bn ? String(description_bn).trim() : null) : existing.description_bn;
+    const updatedOrderIndex = order_index !== undefined ? Number(order_index) : existing.order_index;
+    const updatedIsActive = is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active;
+
+    await pool.query(
+      `UPDATE calculator_panels SET
+        inverter_id = ?,
+        area_id = ?,
+        name = ?,
+        name_bn = ?,
+        model = ?,
+        min_watt = ?,
+        max_watt = ?,
+        wattage = ?,
+        price_bdt = ?,
+        price_usd = ?,
+        features = ?,
+        efficiency = ?,
+        warranty_years = ?,
+        description = ?,
+        description_bn = ?,
+        order_index = ?,
+        is_active = ?
+       WHERE id = ?`,
+      [
+        updatedInverterId,
+        updatedAreaId,
+        updatedName,
+        updatedNameBn,
+        updatedModel,
+        updatedMinWatt,
+        updatedMaxWatt,
+        updatedWattage,
+        updatedPriceBdt,
+        updatedPriceUsd,
+        updatedFeaturesJson,
+        updatedEfficiency,
+        updatedWarranty,
+        updatedDescription,
+        updatedDescriptionBn,
+        updatedOrderIndex,
+        updatedIsActive,
+        id,
+      ]
+    );
+
+    const [updated]: any = await pool.query(
+      `SELECT p.*,
+              r.title as inverter_title,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              a.name as area_name,
+              a.name_bn as area_name_bn
+       FROM calculator_panels p
+       LEFT JOIN calculator_recommendations r ON p.inverter_id = r.id
+       LEFT JOIN calculator_areas a ON p.area_id = a.id
+       WHERE p.id = ?`,
+      [id]
+    );
+
+    const parsed = {
+      ...updated[0],
+      features: typeof updated[0].features === "string" ? JSON.parse(updated[0].features) : (updated[0].features || []),
+    };
+
+    res.json({ success: true, data: parsed });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deletePanel = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const { id } = req.params;
+    const [existing]: any = await pool.query("SELECT id FROM calculator_panels WHERE id = ?", [id]);
+    if (!existing || existing.length === 0) {
+      res.status(404).json({ success: false, message: "Solar Panel not found." });
+      return;
+    }
+    await pool.query("DELETE FROM calculator_panels WHERE id = ?", [id]);
+    res.json({ success: true, message: "Solar Panel deleted successfully." });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+

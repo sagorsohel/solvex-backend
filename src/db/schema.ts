@@ -641,4 +641,55 @@ export const calculatorRecommendations = mysqlTable("calculator_recommendations"
 export type CalculatorRecommendation = typeof calculatorRecommendations.$inferSelect;
 export type NewCalculatorRecommendation = typeof calculatorRecommendations.$inferInsert;
 
+// 10.5 Solar Installation Areas & Dynamic Services
+export interface AreaServiceItem {
+  id?: string;
+  name: string;
+  price: number;
+}
+
+export const calculatorAreas = mysqlTable("calculator_areas", {
+  id: int("id").primaryKey().autoincrement(),
+  inverterId: int("inverter_id"),
+  name: varchar("name", { length: 191 }).notNull(),
+  nameBn: varchar("name_bn", { length: 191 }),
+  minWatt: int("min_watt").default(0),
+  maxWatt: int("max_watt").default(0),
+  services: json("services").$type<AreaServiceItem[]>(),
+  orderIndex: int("order_index").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CalculatorArea = typeof calculatorAreas.$inferSelect;
+export type NewCalculatorArea = typeof calculatorAreas.$inferInsert;
+
+// 10.6 Solar Panels Catalog
+export const calculatorPanels = mysqlTable("calculator_panels", {
+  id: int("id").primaryKey().autoincrement(),
+  inverterId: int("inverter_id"),
+  areaId: int("area_id"),
+  name: varchar("name", { length: 191 }).notNull(),
+  nameBn: varchar("name_bn", { length: 191 }),
+  model: varchar("model", { length: 191 }),
+  minWatt: int("min_watt").default(0),
+  maxWatt: int("max_watt").default(0),
+  wattage: int("wattage").default(580),
+  priceBdt: varchar("price_bdt", { length: 100 }),
+  priceUsd: varchar("price_usd", { length: 100 }),
+  features: json("features").$type<string[]>(),
+  efficiency: varchar("efficiency", { length: 50 }),
+  warrantyYears: varchar("warranty_years", { length: 50 }).default("25 Years"),
+  description: text("description"),
+  descriptionBn: text("description_bn"),
+  orderIndex: int("order_index").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CalculatorPanel = typeof calculatorPanels.$inferSelect;
+export type NewCalculatorPanel = typeof calculatorPanels.$inferInsert;
+
 

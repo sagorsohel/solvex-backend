@@ -17,6 +17,14 @@ import {
   createRecommendation,
   updateRecommendation,
   deleteRecommendation,
+  getAreas,
+  createArea,
+  updateArea,
+  deleteArea,
+  getPanels,
+  createPanel,
+  updatePanel,
+  deletePanel,
 } from "../controllers/calculator.controller.js";
 import { verifyToken, requireRole } from "../middleware/auth.js";
 
@@ -36,18 +44,38 @@ calculatorRouter.delete("/appliances/:id", verifyToken, requireRole(["admin"]), 
 calculatorRouter.get("/solar-types", verifyToken, getSolarTypes);
 calculatorRouter.post("/solar-types", verifyToken, requireRole(["admin", "editor"]), createSolarType);
 calculatorRouter.put("/solar-types/:id", verifyToken, requireRole(["admin", "editor"]), updateSolarType);
-calculatorRouter.delete("/solar-types/:id", verifyToken, requireRole(["admin"]), deleteSolarType);
+calculatorRouter.delete("/solar-types/:id", verifyToken, requireRole(["admin", "editor"]), deleteSolarType);
 
 // Battery Types CRUD
 calculatorRouter.get("/battery-types", verifyToken, getBatteryTypes);
 calculatorRouter.post("/battery-types", verifyToken, requireRole(["admin", "editor"]), createBatteryType);
 calculatorRouter.put("/battery-types/:id", verifyToken, requireRole(["admin", "editor"]), updateBatteryType);
-calculatorRouter.delete("/battery-types/:id", verifyToken, requireRole(["admin"]), deleteBatteryType);
+calculatorRouter.delete("/battery-types/:id", verifyToken, requireRole(["admin", "editor"]), deleteBatteryType);
 
-// Watt-Range Recommendations & Product Linker CRUD
+// Watt-Range Inverter & Recommendation Packages CRUD
 calculatorRouter.get("/recommendations", verifyToken, getRecommendations);
 calculatorRouter.post("/recommendations", verifyToken, requireRole(["admin", "editor"]), createRecommendation);
 calculatorRouter.put("/recommendations/:id", verifyToken, requireRole(["admin", "editor"]), updateRecommendation);
-calculatorRouter.delete("/recommendations/:id", verifyToken, requireRole(["admin"]), deleteRecommendation);
+calculatorRouter.delete("/recommendations/:id", verifyToken, requireRole(["admin", "editor"]), deleteRecommendation);
+
+// Inverters CRUD aliases (direct mapping to Inverter / Recommendation packages)
+calculatorRouter.get("/inverters", verifyToken, getRecommendations);
+calculatorRouter.post("/inverters", verifyToken, requireRole(["admin", "editor"]), createRecommendation);
+calculatorRouter.put("/inverters/:id", verifyToken, requireRole(["admin", "editor"]), updateRecommendation);
+calculatorRouter.delete("/inverters/:id", verifyToken, requireRole(["admin", "editor"]), deleteRecommendation);
+
+// Installation Areas & Dynamic Services CRUD
+calculatorRouter.get("/areas", verifyToken, getAreas);
+calculatorRouter.post("/areas", verifyToken, requireRole(["admin", "editor"]), createArea);
+calculatorRouter.put("/areas/:id", verifyToken, requireRole(["admin", "editor"]), updateArea);
+calculatorRouter.delete("/areas/:id", verifyToken, requireRole(["admin", "editor"]), deleteArea);
+
+// Solar Panels Catalog CRUD
+calculatorRouter.get("/panels", verifyToken, getPanels);
+calculatorRouter.post("/panels", verifyToken, requireRole(["admin", "editor"]), createPanel);
+calculatorRouter.put("/panels/:id", verifyToken, requireRole(["admin", "editor"]), updatePanel);
+calculatorRouter.delete("/panels/:id", verifyToken, requireRole(["admin", "editor"]), deletePanel);
 
 export default calculatorRouter;
+
+
