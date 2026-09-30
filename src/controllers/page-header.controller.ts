@@ -115,10 +115,27 @@ export const defaultPageHeaders = [
       },
     },
   },
+  {
+    page_key: "calculator",
+    badge: "INTERACTIVE SOLAR LOAD CALCULATOR",
+    title: "Calculate Your Solar Sizing, Packages & Bill Savings",
+    highlight_text: "4-Step Instant Engineering Sizing",
+    subtitle: "4-Step Instant Engineering Sizing, Package Suggestion & Bill Savings",
+    description: "Enter your appliances to calculate peak load, pick your ideal suggested solar package, choose your installation region, and discover your turnkey project investment with lifetime electric bill savings.",
+    background_image: "/clean_energy_hero_bg.jpg",
+    translations: {
+      bn: {
+        badge: "ইন্টারেক্টিভ সোলার লোড ক্যালকুলেটর",
+        title: "আপনার বাসা ও প্রতিষ্ঠানের সোলার সাইজ ও বিল সাশ্রয় হিসাব করুন",
+        highlight_text: "৪টি সহজ ধাপে সম্পূর্ণ নির্ভুল প্রকৌশল সাইজিং",
+        subtitle: "৪টি সহজ ধাপে সম্পূর্ণ নির্ভুল প্রকৌশল সাইজিং, প্যাকেজ ও বিদ্যুৎ বিল সাশ্রয় বিশ্লেষণ",
+        description: "আপনার প্রতিদিনের বৈদ্যুতিক সরঞ্জাম দিন, ওয়াটের উপর ভিত্তি করে প্রস্তাবিত সোলার প্যাকেজ বাছাই করুন, ইনস্টলেশন এরিয়া নির্বাচন করুন এবং সম্পূর্ণ প্রজেক্ট খরচ ও মাসিক বিদ্যুৎ বিল সাশ্রয়ের বিস্তারিত বিবরণ দেখুন।",
+      },
+    },
+  },
 ];
 
 export const ensurePageHeadersTable = async () => {
-  if (tableInitialized) return;
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS page_headers (
