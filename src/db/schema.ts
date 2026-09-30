@@ -618,6 +618,7 @@ export const calculatorRecommendations = mysqlTable("calculator_recommendations"
   id: int("id").primaryKey().autoincrement(),
   title: varchar("title", { length: 191 }).notNull(),
   titleBn: varchar("title_bn", { length: 191 }),
+  inverterType: varchar("inverter_type", { length: 50 }).default("hybrid").notNull(),
   minWatt: int("min_watt").notNull(),
   maxWatt: int("max_watt").notNull(),
   recommendedSolarKw: decimal("recommended_solar_kw", { precision: 6, scale: 2 }).notNull(),

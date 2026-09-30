@@ -25,6 +25,14 @@ import {
   createPanel,
   updatePanel,
   deletePanel,
+  getAccessories,
+  createAccessory,
+  updateAccessory,
+  deleteAccessory,
+  getPackages,
+  createPackage,
+  updatePackage,
+  deletePackage,
 } from "../controllers/calculator.controller.js";
 import { verifyToken, requireRole } from "../middleware/auth.js";
 
@@ -75,6 +83,18 @@ calculatorRouter.get("/panels", verifyToken, getPanels);
 calculatorRouter.post("/panels", verifyToken, requireRole(["admin", "editor"]), createPanel);
 calculatorRouter.put("/panels/:id", verifyToken, requireRole(["admin", "editor"]), updatePanel);
 calculatorRouter.delete("/panels/:id", verifyToken, requireRole(["admin", "editor"]), deletePanel);
+
+// Solar Accessories Packages CRUD
+calculatorRouter.get("/accessories", verifyToken, getAccessories);
+calculatorRouter.post("/accessories", verifyToken, requireRole(["admin", "editor"]), createAccessory);
+calculatorRouter.put("/accessories/:id", verifyToken, requireRole(["admin", "editor"]), updateAccessory);
+calculatorRouter.delete("/accessories/:id", verifyToken, requireRole(["admin", "editor"]), deleteAccessory);
+
+// Complete Solar Packages Panel CRUD
+calculatorRouter.get("/packages", verifyToken, getPackages);
+calculatorRouter.post("/packages", verifyToken, requireRole(["admin", "editor"]), createPackage);
+calculatorRouter.put("/packages/:id", verifyToken, requireRole(["admin", "editor"]), updatePackage);
+calculatorRouter.delete("/packages/:id", verifyToken, requireRole(["admin", "editor"]), deletePackage);
 
 export default calculatorRouter;
 
