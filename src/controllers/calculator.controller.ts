@@ -560,6 +560,25 @@ export const ensureCalculatorTables = async (): Promise<void> => {
       `);
     }
 
+    // 9. Calculator Settings (Current Grid Electricity Tariff & Assumptions)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calculator_settings (
+        id INT PRIMARY KEY DEFAULT 1,
+        grid_tariff_bdt DECIMAL(10, 2) NOT NULL DEFAULT 10.50,
+        grid_tariff_usd DECIMAL(10, 2) NOT NULL DEFAULT 0.16,
+        solar_offset_percent DECIMAL(5, 2) NOT NULL DEFAULT 95.00,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    const [settingsRow]: any = await pool.query("SELECT id FROM calculator_settings WHERE id = 1");
+    if (!settingsRow || settingsRow.length === 0) {
+      await pool.query(`
+        INSERT INTO calculator_settings (id, grid_tariff_bdt, grid_tariff_usd, solar_offset_percent)
+        VALUES (1, 10.50, 0.16, 95.00)
+      `);
+    }
+
     tablesInitialized = true;
   } catch (error) {
     console.error("ensureCalculatorTables error:", error);
@@ -780,6 +799,14 @@ export const getPublicCalculatorData = async (_req: Request, res: Response): Pro
       }
     }
 
+    // 9. Fetch calculator settings (Current Grid Electricity Tariff, USD rate, Offset %)
+    const [settingsRows]: any = await pool.query("SELECT * FROM calculator_settings WHERE id = 1");
+    const settings = settingsRows && settingsRows[0] ? settingsRows[0] : {
+      grid_tariff_bdt: 10.50,
+      grid_tariff_usd: 0.16,
+      solar_offset_percent: 95.00
+    };
+
     res.json({
       success: true,
       data: {
@@ -791,6 +818,7 @@ export const getPublicCalculatorData = async (_req: Request, res: Response): Pro
         panels,
         accessories,
         packages,
+        settings,
       },
     });
   } catch (error: any) {
@@ -2717,6 +2745,52 @@ export const deletePackage = async (req: AuthenticatedRequest, res: Response): P
     }
     await pool.query("DELETE FROM calculator_packages WHERE id = ?", [id]);
     res.json({ success: true, message: "Package deleted successfully." });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ==========================================
+// CALCULATOR SETTINGS (GRID TARIFF & ASSUMPTIONS)
+// ==========================================
+
+export const getCalculatorSettings = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const [rows]: any = await pool.query("SELECT * FROM calculator_settings WHERE id = 1");
+    const data = rows && rows[0] ? rows[0] : {
+      id: 1,
+      grid_tariff_bdt: 10.50,
+      grid_tariff_usd: 0.16,
+      solar_offset_percent: 95.00
+    };
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateCalculatorSettings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await ensureCalculatorTables();
+    const { grid_tariff_bdt, grid_tariff_usd, solar_offset_percent } = req.body;
+    
+    await pool.query(
+      `INSERT INTO calculator_settings (id, grid_tariff_bdt, grid_tariff_usd, solar_offset_percent)
+       VALUES (1, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         grid_tariff_bdt = VALUES(grid_tariff_bdt),
+         grid_tariff_usd = VALUES(grid_tariff_usd),
+         solar_offset_percent = VALUES(solar_offset_percent)`,
+      [
+        Number(grid_tariff_bdt) || 10.50,
+        Number(grid_tariff_usd) || 0.16,
+        Number(solar_offset_percent) || 95.00,
+      ]
+    );
+
+    const [rows]: any = await pool.query("SELECT * FROM calculator_settings WHERE id = 1");
+    res.json({ success: true, data: rows[0], message: "Calculator settings updated successfully." });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -33,6 +33,8 @@ import {
   createPackage,
   updatePackage,
   deletePackage,
+  getCalculatorSettings,
+  updateCalculatorSettings,
 } from "../controllers/calculator.controller.js";
 import { verifyToken, requireRole } from "../middleware/auth.js";
 
@@ -95,6 +97,10 @@ calculatorRouter.get("/packages", verifyToken, getPackages);
 calculatorRouter.post("/packages", verifyToken, requireRole(["admin", "editor"]), createPackage);
 calculatorRouter.put("/packages/:id", verifyToken, requireRole(["admin", "editor"]), updatePackage);
 calculatorRouter.delete("/packages/:id", verifyToken, requireRole(["admin", "editor"]), deletePackage);
+
+// Calculator Settings (Grid Tariff & Solar Assumptions)
+calculatorRouter.get("/settings", getCalculatorSettings);
+calculatorRouter.put("/settings", verifyToken, requireRole(["admin", "editor"]), updateCalculatorSettings);
 
 export default calculatorRouter;
 
