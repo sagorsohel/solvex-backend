@@ -560,22 +560,200 @@ export const ensureCalculatorTables = async (): Promise<void> => {
       `);
     }
 
-    // 9. Calculator Settings (Current Grid Electricity Tariff & Assumptions)
+    // 9. Calculator Settings (Current Grid Electricity Tariff & Dynamic Content Texts)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS calculator_settings (
         id INT PRIMARY KEY DEFAULT 1,
         grid_tariff_bdt DECIMAL(10, 2) NOT NULL DEFAULT 10.50,
         grid_tariff_usd DECIMAL(10, 2) NOT NULL DEFAULT 0.16,
         solar_offset_percent DECIMAL(5, 2) NOT NULL DEFAULT 95.00,
+        step2_subtitle VARCHAR(255) DEFAULT 'STEP 2: SUGGESTED SOLAR PACKAGES',
+        step2_subtitle_bn VARCHAR(255) DEFAULT 'ধাপ ২: প্রস্তাবিত সোলার প্যাকেজ নির্বাচন',
+        step2_title VARCHAR(255) DEFAULT 'Solar Packages Matched for Your Connected Capacity',
+        step2_title_bn VARCHAR(255) DEFAULT 'আপনার লোডের জন্য সামঞ্জস্যপূর্ণ সোলার প্যাকেজসমূহ',
+        step2_description TEXT NULL,
+        step2_description_bn TEXT NULL,
+        step3_subtitle VARCHAR(255) DEFAULT 'STEP 3: INSTALLATION AREA & SERVICES',
+        step3_subtitle_bn VARCHAR(255) DEFAULT 'ধাপ ৩: ইনস্টলেশন এরিয়া ও অন-সাইট সার্ভিসেস',
+        step3_title VARCHAR(255) DEFAULT 'Select Your Installation Region',
+        step3_title_bn VARCHAR(255) DEFAULT 'আপনার ইনস্টলেশন এলাকা নির্বাচন করুন',
+        step3_description TEXT NULL,
+        step3_description_bn TEXT NULL,
+        savings_badge VARCHAR(255) DEFAULT 'ELECTRIC BILL SAVINGS & BENEFIT COMPARISON',
+        savings_badge_bn VARCHAR(255) DEFAULT 'বিদ্যুৎ বিল সাশ্রয় ও তুলনামূলক বিশ্লেষণ',
+        savings_title VARCHAR(255) DEFAULT 'How Much Will You Benefit From Solar vs Regular Grid Electricity?',
+        savings_title_bn VARCHAR(255) DEFAULT 'সোলার ব্যবহারে আপনি বিদ্যুৎ বিল থেকে কতটা লাভবান হবেন?',
+        itemized_breakdown_badge VARCHAR(255) DEFAULT 'ITEMIZED TURNKEY BREAKDOWN',
+        itemized_breakdown_badge_bn VARCHAR(255) DEFAULT 'আইটেমাইজড খরচ বিবরণী',
+        itemized_breakdown_title VARCHAR(255) DEFAULT 'Turnkey Equipment & Regional EPC Services',
+        itemized_breakdown_title_bn VARCHAR(255) DEFAULT 'প্যাকেজ ও সার্ভিসের বিস্তারিত খরচ',
+        epc_assurance_badge VARCHAR(255) DEFAULT 'SOLVEX EPC ASSURANCE',
+        epc_assurance_badge_bn VARCHAR(255) DEFAULT 'সলভেক্স কোয়ালিটি গ্যারান্টি',
+        epc_assurance_title VARCHAR(255) DEFAULT 'Certified Engineering & Long-Term Warranty',
+        epc_assurance_title_bn VARCHAR(255) DEFAULT 'আন্তর্জাতিক মানের টার্নকি স্ট্যান্ডার্ড',
+        epc_assurance_tier_badge VARCHAR(100) DEFAULT 'TIER-1 EPC',
+        epc_assurance_tier_badge_bn VARCHAR(100) DEFAULT 'টিয়ার-১ ইপিসি',
+        warranty_card1_title VARCHAR(255) DEFAULT '25-Year Performance Warranty',
+        warranty_card1_title_bn VARCHAR(255) DEFAULT '২৫ বছরের পারফরম্যান্স ওয়ারেন্টি',
+        warranty_card1_desc TEXT NULL,
+        warranty_card1_desc_bn TEXT NULL,
+        warranty_card2_title VARCHAR(255) DEFAULT 'Certified Electrical Engineers',
+        warranty_card2_title_bn VARCHAR(255) DEFAULT 'প্রকৌশলী অন-সাইট ইনস্টলেশন ও সাপোর্ট',
+        warranty_card2_desc TEXT NULL,
+        warranty_card2_desc_bn TEXT NULL,
+        epc_advice_title VARCHAR(255) DEFAULT 'Need Custom EPC Advice?',
+        epc_advice_title_bn VARCHAR(255) DEFAULT 'প্রকৌশলী পরামর্শ চান?',
+        epc_advice_desc TEXT NULL,
+        epc_advice_desc_bn TEXT NULL,
+        epc_advice_btn_text VARCHAR(100) DEFAULT 'CONTACT',
+        epc_advice_btn_text_bn VARCHAR(100) DEFAULT 'যোগাযোগ',
+        epc_advice_btn_url VARCHAR(255) DEFAULT '/contact',
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // Ensure all dynamic content columns exist on existing table
+    try {
+      const [cols]: any = await pool.query("SHOW COLUMNS FROM calculator_settings");
+      const colNames = cols.map((c: any) => c.Field);
+
+      const neededCols: { name: string; type: string; defaultVal: string }[] = [
+        { name: "step2_subtitle", type: "VARCHAR(255)", defaultVal: "'STEP 2: SUGGESTED SOLAR PACKAGES'" },
+        { name: "step2_subtitle_bn", type: "VARCHAR(255)", defaultVal: "'ধাপ ২: প্রস্তাবিত সোলার প্যাকেজ নির্বাচন'" },
+        { name: "step2_title", type: "VARCHAR(255)", defaultVal: "'Solar Packages Matched for Your Connected Capacity'" },
+        { name: "step2_title_bn", type: "VARCHAR(255)", defaultVal: "'আপনার লোডের জন্য সামঞ্জস্যপূর্ণ সোলার প্যাকেজসমূহ'" },
+        { name: "step2_description", type: "TEXT", defaultVal: "'Your connected load is {load}W ({kwh} kWh/day). Showing packages covering your load, plus the next capacity upgrade option.'" },
+        { name: "step2_description_bn", type: "TEXT", defaultVal: "'আপনার বর্তমান পিক লোড {load}W ({kwh} kWh/দিন)। আপনার লোডের সমতুল্য প্যাকেজ এবং ভবিষ্যতের জন্য পরবর্তী আপগ্রেড অপশন নিচে দেওয়া হলো।'" },
+        { name: "step3_subtitle", type: "VARCHAR(255)", defaultVal: "'STEP 3: INSTALLATION AREA & SERVICES'" },
+        { name: "step3_subtitle_bn", type: "VARCHAR(255)", defaultVal: "'ধাপ ৩: ইনস্টলেশন এরিয়া ও অন-সাইট সার্ভিসেস'" },
+        { name: "step3_title", type: "VARCHAR(255)", defaultVal: "'Select Your Installation Region'" },
+        { name: "step3_title_bn", type: "VARCHAR(255)", defaultVal: "'আপনার ইনস্টলেশন এলাকা নির্বাচন করুন'" },
+        { name: "step3_description", type: "TEXT", defaultVal: "'Tailored installation regions and EPC services configured for your capacity ({load}W).'" },
+        { name: "step3_description_bn", type: "TEXT", defaultVal: "'আপনার ওয়াট সক্ষমতা ({load}W) এর জন্য সমর্থিত এরিয়া এবং সাইট ভিজিট, মাউন্টিং ও ইঞ্জিনিয়ারিং সার্ভিসেস নিচে প্রদর্শিত হচ্ছে।'" },
+        { name: "savings_badge", type: "VARCHAR(255)", defaultVal: "'ELECTRIC BILL SAVINGS & BENEFIT COMPARISON'" },
+        { name: "savings_badge_bn", type: "VARCHAR(255)", defaultVal: "'বিদ্যুৎ বিল সাশ্রয় ও তুলনামূলক বিশ্লেষণ'" },
+        { name: "savings_title", type: "VARCHAR(255)", defaultVal: "'How Much Will You Benefit From Solar vs Regular Grid Electricity?'" },
+        { name: "savings_title_bn", type: "VARCHAR(255)", defaultVal: "'সোলার ব্যবহারে আপনি বিদ্যুৎ বিল থেকে কতটা লাভবান হবেন?'" },
+        { name: "itemized_breakdown_badge", type: "VARCHAR(255)", defaultVal: "'ITEMIZED TURNKEY BREAKDOWN'" },
+        { name: "itemized_breakdown_badge_bn", type: "VARCHAR(255)", defaultVal: "'আইটেমাইজড খরচ বিবরণী'" },
+        { name: "itemized_breakdown_title", type: "VARCHAR(255)", defaultVal: "'Turnkey Equipment & Regional EPC Services'" },
+        { name: "itemized_breakdown_title_bn", type: "VARCHAR(255)", defaultVal: "'প্যাকেজ ও সার্ভিসের বিস্তারিত খরচ'" },
+        { name: "epc_assurance_badge", type: "VARCHAR(255)", defaultVal: "'SOLVEX EPC ASSURANCE'" },
+        { name: "epc_assurance_badge_bn", type: "VARCHAR(255)", defaultVal: "'সলভেক্স কোয়ালিটি গ্যারান্টি'" },
+        { name: "epc_assurance_title", type: "VARCHAR(255)", defaultVal: "'Certified Engineering & Long-Term Warranty'" },
+        { name: "epc_assurance_title_bn", type: "VARCHAR(255)", defaultVal: "'আন্তর্জাতিক মানের টার্নকি স্ট্যান্ডার্ড'" },
+        { name: "epc_assurance_tier_badge", type: "VARCHAR(100)", defaultVal: "'TIER-1 EPC'" },
+        { name: "epc_assurance_tier_badge_bn", type: "VARCHAR(100)", defaultVal: "'টিয়ার-১ ইপিসি'" },
+        { name: "warranty_card1_title", type: "VARCHAR(255)", defaultVal: "'25-Year Performance Warranty'" },
+        { name: "warranty_card1_title_bn", type: "VARCHAR(255)", defaultVal: "'২৫ বছরের পারফরম্যান্স ওয়ারেন্টি'" },
+        { name: "warranty_card1_desc", type: "TEXT", defaultVal: "'Linear power output guarantee on Tier-1 mono bifacial solar PV modules.'" },
+        { name: "warranty_card1_desc_bn", type: "TEXT", defaultVal: "'বাইফেসিয়াল টপকন সোলার প্যানেলের ওপর দীর্ঘস্থায়ী ওয়ারেন্টি ও গ্যারান্টি।'" },
+        { name: "warranty_card2_title", type: "VARCHAR(255)", defaultVal: "'Certified Electrical Engineers'" },
+        { name: "warranty_card2_title_bn", type: "VARCHAR(255)", defaultVal: "'প্রকৌশলী অন-সাইট ইনস্টলেশন ও সাপোর্ট'" },
+        { name: "warranty_card2_desc", type: "TEXT", defaultVal: "'Complete structural CAD layout, lightning protection, and utility net-metering compliance.'" },
+        { name: "warranty_card2_desc_bn", type: "TEXT", defaultVal: "'অভিজ্ঞ সোলার ইঞ্জিনিয়ার দ্বারা সাইট সার্ভে, সঠিক ওয়্যারিং ও সম্পূর্ণ মাউন্টিং।'" },
+        { name: "epc_advice_title", type: "VARCHAR(255)", defaultVal: "'Need Custom EPC Advice?'" },
+        { name: "epc_advice_title_bn", type: "VARCHAR(255)", defaultVal: "'প্রকৌশলী পরামর্শ চান?'" },
+        { name: "epc_advice_desc", type: "TEXT", defaultVal: "'Our engineers will prepare custom CAD layouts.'" },
+        { name: "epc_advice_desc_bn", type: "TEXT", defaultVal: "'আমাদের সোলার ইঞ্জিনিয়াররা আপনার জন্য ফ্রি অডিট করবে।'" },
+        { name: "epc_advice_btn_text", type: "VARCHAR(100)", defaultVal: "'CONTACT'" },
+        { name: "epc_advice_btn_text_bn", type: "VARCHAR(100)", defaultVal: "'যোগাযোগ'" },
+        { name: "epc_advice_btn_url", type: "VARCHAR(255)", defaultVal: "'/contact'" },
+      ];
+
+      for (const col of neededCols) {
+        if (!colNames.includes(col.name)) {
+          await pool.query(`ALTER TABLE calculator_settings ADD COLUMN ${col.name} ${col.type} NULL`);
+          await pool.query(`UPDATE calculator_settings SET ${col.name} = ${col.defaultVal} WHERE ${col.name} IS NULL`);
+        }
+      }
+    } catch (_e) {}
+
     const [settingsRow]: any = await pool.query("SELECT id FROM calculator_settings WHERE id = 1");
     if (!settingsRow || settingsRow.length === 0) {
       await pool.query(`
-        INSERT INTO calculator_settings (id, grid_tariff_bdt, grid_tariff_usd, solar_offset_percent)
-        VALUES (1, 10.50, 0.16, 95.00)
+        INSERT INTO calculator_settings (
+          id, grid_tariff_bdt, grid_tariff_usd, solar_offset_percent,
+          step2_subtitle, step2_subtitle_bn, step2_title, step2_title_bn, step2_description, step2_description_bn,
+          step3_subtitle, step3_subtitle_bn, step3_title, step3_title_bn, step3_description, step3_description_bn,
+          savings_badge, savings_badge_bn, savings_title, savings_title_bn,
+          itemized_breakdown_badge, itemized_breakdown_badge_bn, itemized_breakdown_title, itemized_breakdown_title_bn,
+          epc_assurance_badge, epc_assurance_badge_bn, epc_assurance_title, epc_assurance_title_bn, epc_assurance_tier_badge, epc_assurance_tier_badge_bn,
+          warranty_card1_title, warranty_card1_title_bn, warranty_card1_desc, warranty_card1_desc_bn,
+          warranty_card2_title, warranty_card2_title_bn, warranty_card2_desc, warranty_card2_desc_bn,
+          epc_advice_title, epc_advice_title_bn, epc_advice_desc, epc_advice_desc_bn, epc_advice_btn_text, epc_advice_btn_text_bn, epc_advice_btn_url
+        ) VALUES (
+          1, 10.50, 0.16, 95.00,
+          'STEP 2: SUGGESTED SOLAR PACKAGES', 'ধাপ ২: প্রস্তাবিত সোলার প্যাকেজ নির্বাচন',
+          'Solar Packages Matched for Your Connected Capacity', 'আপনার লোডের জন্য সামঞ্জস্যপূর্ণ সোলার প্যাকেজসমূহ',
+          'Your connected load is {load}W ({kwh} kWh/day). Showing packages covering your load, plus the next capacity upgrade option.',
+          'আপনার বর্তমান পিক লোড {load}W ({kwh} kWh/দিন)। আপনার লোডের সমতুল্য প্যাকেজ এবং ভবিষ্যতের জন্য পরবর্তী আপগ্রেড অপশন নিচে দেওয়া হলো।',
+          'STEP 3: INSTALLATION AREA & SERVICES', 'ধাপ ৩: ইনস্টলেশন এরিয়া ও অন-সাইট সার্ভিসেস',
+          'Select Your Installation Region', 'আপনার ইনস্টলেশন এলাকা নির্বাচন করুন',
+          'Tailored installation regions and EPC services configured for your capacity ({load}W).',
+          'আপনার ওয়াট সক্ষমতা ({load}W) এর জন্য সমর্থিত এরিয়া এবং সাইট ভিজিট, মাউন্টিং ও ইঞ্জিনিয়ারিং সার্ভিসেস নিচে প্রদর্শিত হচ্ছে।',
+          'ELECTRIC BILL SAVINGS & BENEFIT COMPARISON', 'বিদ্যুৎ বিল সাশ্রয় ও তুলনামূলক বিশ্লেষণ',
+          'How Much Will You Benefit From Solar vs Regular Grid Electricity?', 'সোলার ব্যবহারে আপনি বিদ্যুৎ বিল থেকে কতটা লাভবান হবেন?',
+          'ITEMIZED TURNKEY BREAKDOWN', 'আইটেমাইজড খরচ বিবরণী',
+          'Turnkey Equipment & Regional EPC Services', 'প্যাকেজ ও সার্ভিসের বিস্তারিত খরচ',
+          'SOLVEX EPC ASSURANCE', 'সলভেক্স কোয়ালিটি গ্যারান্টি',
+          'Certified Engineering & Long-Term Warranty', 'আন্তর্জাতিক মানের টার্নকি স্ট্যান্ডার্ড',
+          'TIER-1 EPC', 'টিয়ার-১ ইপিসি',
+          '25-Year Performance Warranty', '২৫ বছরের পারফরম্যান্স ওয়ারেন্টি',
+          'Linear power output guarantee on Tier-1 mono bifacial solar PV modules.', 'বাইফেসিয়াল টপকন সোলার প্যানেলের ওপর দীর্ঘস্থায়ী ওয়ারেন্টি ও গ্যারান্টি।',
+          'Certified Electrical Engineers', 'প্রকৌশলী অন-সাইট ইনস্টলেশন ও সাপোর্ট',
+          'Complete structural CAD layout, lightning protection, and utility net-metering compliance.', 'অভিজ্ঞ সোলার ইঞ্জিনিয়ার দ্বারা সাইট সার্ভে, সঠিক ওয়্যারিং ও সম্পূর্ণ মাউন্টিং।',
+          'Need Custom EPC Advice?', 'প্রকৌশলী পরামর্শ চান?',
+          'Our engineers will prepare custom CAD layouts.', 'আমাদের সোলার ইঞ্জিনিয়াররা আপনার জন্য ফ্রি অডিট করবে।',
+          'CONTACT', 'যোগাযোগ', '/contact'
+        )
+      `);
+    } else {
+      // Ensure defaults for existing rows if any text column is NULL
+      await pool.query(`
+        UPDATE calculator_settings SET
+          step2_subtitle = COALESCE(step2_subtitle, 'STEP 2: SUGGESTED SOLAR PACKAGES'),
+          step2_subtitle_bn = COALESCE(step2_subtitle_bn, 'ধাপ ২: প্রস্তাবিত সোলার প্যাকেজ নির্বাচন'),
+          step2_title = COALESCE(step2_title, 'Solar Packages Matched for Your Connected Capacity'),
+          step2_title_bn = COALESCE(step2_title_bn, 'আপনার লোডের জন্য সামঞ্জস্যপূর্ণ সোলার প্যাকেজসমূহ'),
+          step2_description = COALESCE(step2_description, 'Your connected load is {load}W ({kwh} kWh/day). Showing packages covering your load, plus the next capacity upgrade option.'),
+          step2_description_bn = COALESCE(step2_description_bn, 'আপনার বর্তমান পিক লোড {load}W ({kwh} kWh/দিন)। আপনার লোডের সমতুল্য প্যাকেজ এবং ভবিষ্যতের জন্য পরবর্তী আপগ্রেড অপশন নিচে দেওয়া হলো।'),
+          step3_subtitle = COALESCE(step3_subtitle, 'STEP 3: INSTALLATION AREA & SERVICES'),
+          step3_subtitle_bn = COALESCE(step3_subtitle_bn, 'ধাপ ৩: ইনস্টলেশন এরিয়া ও অন-সাইট সার্ভিসেস'),
+          step3_title = COALESCE(step3_title, 'Select Your Installation Region'),
+          step3_title_bn = COALESCE(step3_title_bn, 'আপনার ইনস্টলেশন এলাকা নির্বাচন করুন'),
+          step3_description = COALESCE(step3_description, 'Tailored installation regions and EPC services configured for your capacity ({load}W).'),
+          step3_description_bn = COALESCE(step3_description_bn, 'আপনার ওয়াট সক্ষমতা ({load}W) এর জন্য সমর্থিত এরিয়া এবং সাইট ভিজিট, মাউন্টিং ও ইঞ্জিনিয়ারিং সার্ভিসেস নিচে প্রদর্শিত হচ্ছে।'),
+          savings_badge = COALESCE(savings_badge, 'ELECTRIC BILL SAVINGS & BENEFIT COMPARISON'),
+          savings_badge_bn = COALESCE(savings_badge_bn, 'বিদ্যুৎ বিল সাশ্রয় ও তুলনামূলক বিশ্লেষণ'),
+          savings_title = COALESCE(savings_title, 'How Much Will You Benefit From Solar vs Regular Grid Electricity?'),
+          savings_title_bn = COALESCE(savings_title_bn, 'সোলার ব্যবহারে আপনি বিদ্যুৎ বিল থেকে কতটা লাভবান হবেন?'),
+          itemized_breakdown_badge = COALESCE(itemized_breakdown_badge, 'ITEMIZED TURNKEY BREAKDOWN'),
+          itemized_breakdown_badge_bn = COALESCE(itemized_breakdown_badge_bn, 'আইটেমাইজড খরচ বিবরণী'),
+          itemized_breakdown_title = COALESCE(itemized_breakdown_title, 'Turnkey Equipment & Regional EPC Services'),
+          itemized_breakdown_title_bn = COALESCE(itemized_breakdown_title_bn, 'প্যাকেজ ও সার্ভিসের বিস্তারিত খরচ'),
+          epc_assurance_badge = COALESCE(epc_assurance_badge, 'SOLVEX EPC ASSURANCE'),
+          epc_assurance_badge_bn = COALESCE(epc_assurance_badge_bn, 'সলভেক্স কোয়ালিটি গ্যারান্টি'),
+          epc_assurance_title = COALESCE(epc_assurance_title, 'Certified Engineering & Long-Term Warranty'),
+          epc_assurance_title_bn = COALESCE(epc_assurance_title_bn, 'আন্তর্জাতিক মানের টার্নকি স্ট্যান্ডার্ড'),
+          epc_assurance_tier_badge = COALESCE(epc_assurance_tier_badge, 'TIER-1 EPC'),
+          epc_assurance_tier_badge_bn = COALESCE(epc_assurance_tier_badge_bn, 'টিয়ার-১ ইপিসি'),
+          warranty_card1_title = COALESCE(warranty_card1_title, '25-Year Performance Warranty'),
+          warranty_card1_title_bn = COALESCE(warranty_card1_title_bn, '২৫ বছরের পারফরম্যান্স ওয়ারেন্টি'),
+          warranty_card1_desc = COALESCE(warranty_card1_desc, 'Linear power output guarantee on Tier-1 mono bifacial solar PV modules.'),
+          warranty_card1_desc_bn = COALESCE(warranty_card1_desc_bn, 'বাইফেসিয়াল টপকন সোলার প্যানেলের ওপর দীর্ঘস্থায়ী ওয়ারেন্টি ও গ্যারান্টি।'),
+          warranty_card2_title = COALESCE(warranty_card2_title, 'Certified Electrical Engineers'),
+          warranty_card2_title_bn = COALESCE(warranty_card2_title_bn, 'প্রকৌশলী অন-সাইট ইনস্টলেশন ও সাপোর্ট'),
+          warranty_card2_desc = COALESCE(warranty_card2_desc, 'Complete structural CAD layout, lightning protection, and utility net-metering compliance.'),
+          warranty_card2_desc_bn = COALESCE(warranty_card2_desc_bn, 'অভিজ্ঞ সোলার ইঞ্জিনিয়ার দ্বারা সাইট সার্ভে, সঠিক ওয়্যারিং ও সম্পূর্ণ মাউন্টিং।'),
+          epc_advice_title = COALESCE(epc_advice_title, 'Need Custom EPC Advice?'),
+          epc_advice_title_bn = COALESCE(epc_advice_title_bn, 'প্রকৌশলী পরামর্শ চান?'),
+          epc_advice_desc = COALESCE(epc_advice_desc, 'Our engineers will prepare custom CAD layouts.'),
+          epc_advice_desc_bn = COALESCE(epc_advice_desc_bn, 'আমাদের সোলার ইঞ্জিনিয়াররা আপনার জন্য ফ্রি অডিট করবে।'),
+          epc_advice_btn_text = COALESCE(epc_advice_btn_text, 'CONTACT'),
+          epc_advice_btn_text_bn = COALESCE(epc_advice_btn_text_bn, 'যোগাযোগ'),
+          epc_advice_btn_url = COALESCE(epc_advice_btn_url, '/contact')
+        WHERE id = 1
       `);
     }
 
@@ -2773,19 +2951,140 @@ export const getCalculatorSettings = async (_req: Request, res: Response): Promi
 export const updateCalculatorSettings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     await ensureCalculatorTables();
-    const { grid_tariff_bdt, grid_tariff_usd, solar_offset_percent } = req.body;
-    
+    const body = req.body || {};
+
+    const [existingRows]: any = await pool.query("SELECT * FROM calculator_settings WHERE id = 1");
+    const existing = existingRows && existingRows[0] ? existingRows[0] : {};
+
+    const grid_tariff_bdt = body.grid_tariff_bdt !== undefined ? Number(body.grid_tariff_bdt) : (existing.grid_tariff_bdt ?? 10.50);
+    const grid_tariff_usd = body.grid_tariff_usd !== undefined ? Number(body.grid_tariff_usd) : (existing.grid_tariff_usd ?? 0.16);
+    const solar_offset_percent = body.solar_offset_percent !== undefined ? Number(body.solar_offset_percent) : (existing.solar_offset_percent ?? 95.00);
+
+    const step2_subtitle = body.step2_subtitle !== undefined ? body.step2_subtitle : existing.step2_subtitle;
+    const step2_subtitle_bn = body.step2_subtitle_bn !== undefined ? body.step2_subtitle_bn : existing.step2_subtitle_bn;
+    const step2_title = body.step2_title !== undefined ? body.step2_title : existing.step2_title;
+    const step2_title_bn = body.step2_title_bn !== undefined ? body.step2_title_bn : existing.step2_title_bn;
+    const step2_description = body.step2_description !== undefined ? body.step2_description : existing.step2_description;
+    const step2_description_bn = body.step2_description_bn !== undefined ? body.step2_description_bn : existing.step2_description_bn;
+
+    const step3_subtitle = body.step3_subtitle !== undefined ? body.step3_subtitle : existing.step3_subtitle;
+    const step3_subtitle_bn = body.step3_subtitle_bn !== undefined ? body.step3_subtitle_bn : existing.step3_subtitle_bn;
+    const step3_title = body.step3_title !== undefined ? body.step3_title : existing.step3_title;
+    const step3_title_bn = body.step3_title_bn !== undefined ? body.step3_title_bn : existing.step3_title_bn;
+    const step3_description = body.step3_description !== undefined ? body.step3_description : existing.step3_description;
+    const step3_description_bn = body.step3_description_bn !== undefined ? body.step3_description_bn : existing.step3_description_bn;
+
+    const savings_badge = body.savings_badge !== undefined ? body.savings_badge : existing.savings_badge;
+    const savings_badge_bn = body.savings_badge_bn !== undefined ? body.savings_badge_bn : existing.savings_badge_bn;
+    const savings_title = body.savings_title !== undefined ? body.savings_title : existing.savings_title;
+    const savings_title_bn = body.savings_title_bn !== undefined ? body.savings_title_bn : existing.savings_title_bn;
+
+    const itemized_breakdown_badge = body.itemized_breakdown_badge !== undefined ? body.itemized_breakdown_badge : existing.itemized_breakdown_badge;
+    const itemized_breakdown_badge_bn = body.itemized_breakdown_badge_bn !== undefined ? body.itemized_breakdown_badge_bn : existing.itemized_breakdown_badge_bn;
+    const itemized_breakdown_title = body.itemized_breakdown_title !== undefined ? body.itemized_breakdown_title : existing.itemized_breakdown_title;
+    const itemized_breakdown_title_bn = body.itemized_breakdown_title_bn !== undefined ? body.itemized_breakdown_title_bn : existing.itemized_breakdown_title_bn;
+
+    const epc_assurance_badge = body.epc_assurance_badge !== undefined ? body.epc_assurance_badge : existing.epc_assurance_badge;
+    const epc_assurance_badge_bn = body.epc_assurance_badge_bn !== undefined ? body.epc_assurance_badge_bn : existing.epc_assurance_badge_bn;
+    const epc_assurance_title = body.epc_assurance_title !== undefined ? body.epc_assurance_title : existing.epc_assurance_title;
+    const epc_assurance_title_bn = body.epc_assurance_title_bn !== undefined ? body.epc_assurance_title_bn : existing.epc_assurance_title_bn;
+    const epc_assurance_tier_badge = body.epc_assurance_tier_badge !== undefined ? body.epc_assurance_tier_badge : existing.epc_assurance_tier_badge;
+    const epc_assurance_tier_badge_bn = body.epc_assurance_tier_badge_bn !== undefined ? body.epc_assurance_tier_badge_bn : existing.epc_assurance_tier_badge_bn;
+
+    const warranty_card1_title = body.warranty_card1_title !== undefined ? body.warranty_card1_title : existing.warranty_card1_title;
+    const warranty_card1_title_bn = body.warranty_card1_title_bn !== undefined ? body.warranty_card1_title_bn : existing.warranty_card1_title_bn;
+    const warranty_card1_desc = body.warranty_card1_desc !== undefined ? body.warranty_card1_desc : existing.warranty_card1_desc;
+    const warranty_card1_desc_bn = body.warranty_card1_desc_bn !== undefined ? body.warranty_card1_desc_bn : existing.warranty_card1_desc_bn;
+
+    const warranty_card2_title = body.warranty_card2_title !== undefined ? body.warranty_card2_title : existing.warranty_card2_title;
+    const warranty_card2_title_bn = body.warranty_card2_title_bn !== undefined ? body.warranty_card2_title_bn : existing.warranty_card2_title_bn;
+    const warranty_card2_desc = body.warranty_card2_desc !== undefined ? body.warranty_card2_desc : existing.warranty_card2_desc;
+    const warranty_card2_desc_bn = body.warranty_card2_desc_bn !== undefined ? body.warranty_card2_desc_bn : existing.warranty_card2_desc_bn;
+
+    const epc_advice_title = body.epc_advice_title !== undefined ? body.epc_advice_title : existing.epc_advice_title;
+    const epc_advice_title_bn = body.epc_advice_title_bn !== undefined ? body.epc_advice_title_bn : existing.epc_advice_title_bn;
+    const epc_advice_desc = body.epc_advice_desc !== undefined ? body.epc_advice_desc : existing.epc_advice_desc;
+    const epc_advice_desc_bn = body.epc_advice_desc_bn !== undefined ? body.epc_advice_desc_bn : existing.epc_advice_desc_bn;
+    const epc_advice_btn_text = body.epc_advice_btn_text !== undefined ? body.epc_advice_btn_text : existing.epc_advice_btn_text;
+    const epc_advice_btn_text_bn = body.epc_advice_btn_text_bn !== undefined ? body.epc_advice_btn_text_bn : existing.epc_advice_btn_text_bn;
+    const epc_advice_btn_url = body.epc_advice_btn_url !== undefined ? body.epc_advice_btn_url : existing.epc_advice_btn_url;
+
     await pool.query(
-      `INSERT INTO calculator_settings (id, grid_tariff_bdt, grid_tariff_usd, solar_offset_percent)
-       VALUES (1, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         grid_tariff_bdt = VALUES(grid_tariff_bdt),
-         grid_tariff_usd = VALUES(grid_tariff_usd),
-         solar_offset_percent = VALUES(solar_offset_percent)`,
+      `INSERT INTO calculator_settings (
+        id, grid_tariff_bdt, grid_tariff_usd, solar_offset_percent,
+        step2_subtitle, step2_subtitle_bn, step2_title, step2_title_bn, step2_description, step2_description_bn,
+        step3_subtitle, step3_subtitle_bn, step3_title, step3_title_bn, step3_description, step3_description_bn,
+        savings_badge, savings_badge_bn, savings_title, savings_title_bn,
+        itemized_breakdown_badge, itemized_breakdown_badge_bn, itemized_breakdown_title, itemized_breakdown_title_bn,
+        epc_assurance_badge, epc_assurance_badge_bn, epc_assurance_title, epc_assurance_title_bn, epc_assurance_tier_badge, epc_assurance_tier_badge_bn,
+        warranty_card1_title, warranty_card1_title_bn, warranty_card1_desc, warranty_card1_desc_bn,
+        warranty_card2_title, warranty_card2_title_bn, warranty_card2_desc, warranty_card2_desc_bn,
+        epc_advice_title, epc_advice_title_bn, epc_advice_desc, epc_advice_desc_bn, epc_advice_btn_text, epc_advice_btn_text_bn, epc_advice_btn_url
+      ) VALUES (
+        1, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?
+      ) ON DUPLICATE KEY UPDATE
+        grid_tariff_bdt = VALUES(grid_tariff_bdt),
+        grid_tariff_usd = VALUES(grid_tariff_usd),
+        solar_offset_percent = VALUES(solar_offset_percent),
+        step2_subtitle = VALUES(step2_subtitle),
+        step2_subtitle_bn = VALUES(step2_subtitle_bn),
+        step2_title = VALUES(step2_title),
+        step2_title_bn = VALUES(step2_title_bn),
+        step2_description = VALUES(step2_description),
+        step2_description_bn = VALUES(step2_description_bn),
+        step3_subtitle = VALUES(step3_subtitle),
+        step3_subtitle_bn = VALUES(step3_subtitle_bn),
+        step3_title = VALUES(step3_title),
+        step3_title_bn = VALUES(step3_title_bn),
+        step3_description = VALUES(step3_description),
+        step3_description_bn = VALUES(step3_description_bn),
+        savings_badge = VALUES(savings_badge),
+        savings_badge_bn = VALUES(savings_badge_bn),
+        savings_title = VALUES(savings_title),
+        savings_title_bn = VALUES(savings_title_bn),
+        itemized_breakdown_badge = VALUES(itemized_breakdown_badge),
+        itemized_breakdown_badge_bn = VALUES(itemized_breakdown_badge_bn),
+        itemized_breakdown_title = VALUES(itemized_breakdown_title),
+        itemized_breakdown_title_bn = VALUES(itemized_breakdown_title_bn),
+        epc_assurance_badge = VALUES(epc_assurance_badge),
+        epc_assurance_badge_bn = VALUES(epc_assurance_badge_bn),
+        epc_assurance_title = VALUES(epc_assurance_title),
+        epc_assurance_title_bn = VALUES(epc_assurance_title_bn),
+        epc_assurance_tier_badge = VALUES(epc_assurance_tier_badge),
+        epc_assurance_tier_badge_bn = VALUES(epc_assurance_tier_badge_bn),
+        warranty_card1_title = VALUES(warranty_card1_title),
+        warranty_card1_title_bn = VALUES(warranty_card1_title_bn),
+        warranty_card1_desc = VALUES(warranty_card1_desc),
+        warranty_card1_desc_bn = VALUES(warranty_card1_desc_bn),
+        warranty_card2_title = VALUES(warranty_card2_title),
+        warranty_card2_title_bn = VALUES(warranty_card2_title_bn),
+        warranty_card2_desc = VALUES(warranty_card2_desc),
+        warranty_card2_desc_bn = VALUES(warranty_card2_desc_bn),
+        epc_advice_title = VALUES(epc_advice_title),
+        epc_advice_title_bn = VALUES(epc_advice_title_bn),
+        epc_advice_desc = VALUES(epc_advice_desc),
+        epc_advice_desc_bn = VALUES(epc_advice_desc_bn),
+        epc_advice_btn_text = VALUES(epc_advice_btn_text),
+        epc_advice_btn_text_bn = VALUES(epc_advice_btn_text_bn),
+        epc_advice_btn_url = VALUES(epc_advice_btn_url)`,
       [
-        Number(grid_tariff_bdt) || 10.50,
-        Number(grid_tariff_usd) || 0.16,
-        Number(solar_offset_percent) || 95.00,
+        grid_tariff_bdt, grid_tariff_usd, solar_offset_percent,
+        step2_subtitle, step2_subtitle_bn, step2_title, step2_title_bn, step2_description, step2_description_bn,
+        step3_subtitle, step3_subtitle_bn, step3_title, step3_title_bn, step3_description, step3_description_bn,
+        savings_badge, savings_badge_bn, savings_title, savings_title_bn,
+        itemized_breakdown_badge, itemized_breakdown_badge_bn, itemized_breakdown_title, itemized_breakdown_title_bn,
+        epc_assurance_badge, epc_assurance_badge_bn, epc_assurance_title, epc_assurance_title_bn, epc_assurance_tier_badge, epc_assurance_tier_badge_bn,
+        warranty_card1_title, warranty_card1_title_bn, warranty_card1_desc, warranty_card1_desc_bn,
+        warranty_card2_title, warranty_card2_title_bn, warranty_card2_desc, warranty_card2_desc_bn,
+        epc_advice_title, epc_advice_title_bn, epc_advice_desc, epc_advice_desc_bn, epc_advice_btn_text, epc_advice_btn_text_bn, epc_advice_btn_url
       ]
     );
 
