@@ -4,6 +4,25 @@ import { pool } from "../db/index.js";
 
 let tablesInitialized = false;
 
+// In-Memory cache for ultra-fast calculator data (<2ms response)
+let cachedPublicCalculatorData: any = null;
+let publicCalculatorCacheExpiry = 0;
+const PUBLIC_CALCULATOR_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes cache
+
+export const invalidateCalculatorCache = (): void => {
+  cachedPublicCalculatorData = null;
+  publicCalculatorCacheExpiry = 0;
+};
+
+const ensureIndex = async (table: string, indexName: string, columns: string): Promise<void> => {
+  try {
+    const [existing]: any = await pool.query(`SHOW INDEX FROM ${table} WHERE Key_name = ?`, [indexName]);
+    if (!existing || existing.length === 0) {
+      await pool.query(`ALTER TABLE ${table} ADD INDEX ${indexName} (${columns})`);
+    }
+  } catch (_e) {}
+};
+
 /**
  * Automatically create tables and seed default realistic data for the Solar Sizing Calculator
  */
@@ -757,6 +776,28 @@ export const ensureCalculatorTables = async (): Promise<void> => {
       `);
     }
 
+        // Ensure performance indexes for sub-second queries
+    await ensureIndex("calculator_appliances", "idx_appliances_active_order", "is_active, order_index, id");
+    await ensureIndex("calculator_appliances", "idx_appliances_category", "category");
+    await ensureIndex("calculator_solar_types", "idx_solar_active_order", "is_active, order_index, id");
+    await ensureIndex("calculator_solar_types", "idx_solar_inverter", "inverter_id");
+    await ensureIndex("calculator_battery_types", "idx_battery_active_order", "is_active, order_index, id");
+    await ensureIndex("calculator_battery_types", "idx_battery_inverter", "inverter_id");
+    await ensureIndex("calculator_recommendations", "idx_rec_active_watt", "is_active, min_watt, order_index");
+    await ensureIndex("calculator_areas", "idx_areas_active_order", "is_active, order_index, id");
+    await ensureIndex("calculator_areas", "idx_areas_inverter", "inverter_id");
+    await ensureIndex("calculator_panels", "idx_panels_active_order", "is_active, order_index, id");
+    await ensureIndex("calculator_panels", "idx_panels_inverter", "inverter_id");
+    await ensureIndex("calculator_panels", "idx_panels_area", "area_id");
+    await ensureIndex("calculator_accessories", "idx_accessories_active_order", "is_active, order_index, id");
+    await ensureIndex("calculator_accessories", "idx_accessories_inverter", "inverter_id");
+    await ensureIndex("calculator_packages", "idx_packages_active_order", "is_active, order_index, id");
+    await ensureIndex("calculator_packages", "idx_packages_inverter", "inverter_id");
+    await ensureIndex("calculator_packages", "idx_packages_panel", "panel_id");
+    await ensureIndex("calculator_packages", "idx_packages_battery", "battery_type_id");
+    await ensureIndex("calculator_packages", "idx_packages_accessory", "accessory_id");
+    await ensureIndex("calculator_packages", "idx_packages_watt", "min_watt, max_watt");
+
     tablesInitialized = true;
   } catch (error) {
     console.error("ensureCalculatorTables error:", error);
@@ -774,27 +815,77 @@ export const ensureCalculatorTables = async (): Promise<void> => {
  */
 export const getPublicCalculatorData = async (_req: Request, res: Response): Promise<void> => {
   try {
-    await ensureCalculatorTables();
+    // 1. Fast in-memory cache hit (< 2ms response)
+    if (cachedPublicCalculatorData && Date.now() < publicCalculatorCacheExpiry) {
+      res.setHeader("Cache-Control", "public, max-age=120, s-maxage=300, stale-while-revalidate=600");
+      res.json({
+        success: true,
+        data: cachedPublicCalculatorData,
+        cached: true,
+      });
+      return;
+    }
 
-    // 1. Fetch active appliances
-    const [appliances]: any = await pool.query(
-      "SELECT * FROM calculator_appliances WHERE is_active = TRUE ORDER BY order_index ASC, id ASC"
-    );
+    if (!tablesInitialized) {
+      await ensureCalculatorTables();
+    }
 
-    // 2. Fetch active solar types
-    const [solarTypes]: any = await pool.query(
-      "SELECT * FROM calculator_solar_types WHERE is_active = TRUE ORDER BY order_index ASC, id ASC"
-    );
-
-    // 3. Fetch active battery types
-    const [batteryTypes]: any = await pool.query(
-      "SELECT * FROM calculator_battery_types WHERE is_active = TRUE ORDER BY order_index ASC, id ASC"
-    );
-
-    // 4. Fetch active recommendations
-    const [recommendations]: any = await pool.query(
-      "SELECT * FROM calculator_recommendations WHERE is_active = TRUE ORDER BY min_watt ASC, order_index ASC"
-    );
+    // 2. Fetch all 9 independent datasets concurrently in PARALLEL via Promise.all
+    const [
+      [appliances],
+      [solarTypes],
+      [batteryTypes],
+      [recommendations],
+      [areas],
+      [panels],
+      [accessories],
+      [packages],
+      [settingsRows]
+    ]: any = await Promise.all([
+      pool.query("SELECT * FROM calculator_appliances WHERE is_active = TRUE ORDER BY order_index ASC, id ASC"),
+      pool.query("SELECT * FROM calculator_solar_types WHERE is_active = TRUE ORDER BY order_index ASC, id ASC"),
+      pool.query("SELECT * FROM calculator_battery_types WHERE is_active = TRUE ORDER BY order_index ASC, id ASC"),
+      pool.query("SELECT * FROM calculator_recommendations WHERE is_active = TRUE ORDER BY min_watt ASC, order_index ASC"),
+      pool.query(`SELECT a.*, r.title as inverter_title, r.recommended_inverter_kw, r.recommended_inverter_model
+       FROM calculator_areas a
+       LEFT JOIN calculator_recommendations r ON a.inverter_id = r.id
+       WHERE a.is_active = TRUE
+       ORDER BY a.order_index ASC, a.id ASC`),
+      pool.query(`SELECT p.*,
+              r.title as inverter_title,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              a.name as area_name,
+              a.name_bn as area_name_bn
+       FROM calculator_panels p
+       LEFT JOIN calculator_recommendations r ON p.inverter_id = r.id
+       LEFT JOIN calculator_areas a ON p.area_id = a.id
+       WHERE p.is_active = TRUE
+       ORDER BY p.order_index ASC, p.id ASC`),
+      pool.query(`SELECT acc.*,
+              r.title as inverter_title,
+              r.recommended_inverter_kw,
+              r.recommended_inverter_model,
+              r.min_watt as inverter_min_watt,
+              r.max_watt as inverter_max_watt
+       FROM calculator_accessories acc
+       LEFT JOIN calculator_recommendations r ON acc.inverter_id = r.id
+       WHERE acc.is_active = TRUE
+       ORDER BY acc.order_index ASC, acc.id ASC`),
+      pool.query(`SELECT pkg.*,
+              r.title as inverter_title, r.recommended_inverter_kw, r.recommended_inverter_model,
+              p.name as panel_name, p.wattage as panel_wattage, p.model as panel_model,
+              b.name as battery_name, b.model as battery_model,
+              acc.name as accessory_name
+       FROM calculator_packages pkg
+       LEFT JOIN calculator_recommendations r ON pkg.inverter_id = r.id
+       LEFT JOIN calculator_panels p ON pkg.panel_id = p.id
+       LEFT JOIN calculator_battery_types b ON pkg.battery_type_id = b.id
+       LEFT JOIN calculator_accessories acc ON pkg.accessory_id = acc.id
+       WHERE pkg.is_active = TRUE
+       ORDER BY pkg.order_index ASC, pkg.id ASC`),
+      pool.query("SELECT * FROM calculator_settings WHERE id = 1"),
+    ]);
 
     // Collect all suggested product IDs across recommendations
     const allProductIds = new Set<number>();
@@ -815,7 +906,6 @@ export const getPublicCalculatorData = async (_req: Request, res: Response): Pro
         rec.suggested_product_ids = [];
       }
 
-      // Parse package features if string
       if (typeof rec.package_features === "string") {
         try {
           rec.package_features = JSON.parse(rec.package_features);
@@ -825,36 +915,21 @@ export const getPublicCalculatorData = async (_req: Request, res: Response): Pro
       }
     }
 
-    // Parse solar types benefits & features if string
     for (const st of solarTypes) {
       if (typeof st.benefits === "string") {
-        try {
-          st.benefits = JSON.parse(st.benefits);
-        } catch {
-          st.benefits = [];
-        }
+        try { st.benefits = JSON.parse(st.benefits); } catch { st.benefits = []; }
       }
       if (typeof st.features === "string") {
-        try {
-          st.features = JSON.parse(st.features);
-        } catch {
-          st.features = [];
-        }
+        try { st.features = JSON.parse(st.features); } catch { st.features = []; }
       }
     }
 
-    // Parse battery types features if string
     for (const bt of batteryTypes) {
       if (typeof bt.features === "string") {
-        try {
-          bt.features = JSON.parse(bt.features);
-        } catch {
-          bt.features = [];
-        }
+        try { bt.features = JSON.parse(bt.features); } catch { bt.features = []; }
       }
     }
 
-    // Fetch products map if there are suggested product IDs
     const productsMap: Record<number, any> = {};
     if (allProductIds.size > 0) {
       const idsArray = Array.from(allProductIds);
@@ -865,18 +940,13 @@ export const getPublicCalculatorData = async (_req: Request, res: Response): Pro
       if (Array.isArray(prods)) {
         prods.forEach((p) => {
           if (typeof p.features === "string") {
-            try {
-              p.features = JSON.parse(p.features);
-            } catch {
-              p.features = [];
-            }
+            try { p.features = JSON.parse(p.features); } catch { p.features = []; }
           }
           productsMap[p.id] = p;
         });
       }
     }
 
-    // Attach populated suggested products to each recommendation
     const enrichedRecommendations = recommendations.map((rec: any) => {
       const suggestedProducts = (rec.suggested_product_ids || [])
         .map((pid: number) => productsMap[pid])
@@ -887,117 +957,56 @@ export const getPublicCalculatorData = async (_req: Request, res: Response): Pro
       };
     });
 
-    // 5. Fetch active areas
-    const [areas]: any = await pool.query(
-      `SELECT a.*, r.title as inverter_title, r.recommended_inverter_kw, r.recommended_inverter_model
-       FROM calculator_areas a
-       LEFT JOIN calculator_recommendations r ON a.inverter_id = r.id
-       WHERE a.is_active = TRUE
-       ORDER BY a.order_index ASC, a.id ASC`
-    );
     for (const a of areas) {
       if (typeof a.services === "string") {
-        try {
-          a.services = JSON.parse(a.services);
-        } catch {
-          a.services = [];
-        }
+        try { a.services = JSON.parse(a.services); } catch { a.services = []; }
       }
     }
 
-    // 6. Fetch active panels
-    const [panels]: any = await pool.query(
-      `SELECT p.*,
-              r.title as inverter_title,
-              r.recommended_inverter_kw,
-              r.recommended_inverter_model,
-              a.name as area_name,
-              a.name_bn as area_name_bn
-       FROM calculator_panels p
-       LEFT JOIN calculator_recommendations r ON p.inverter_id = r.id
-       LEFT JOIN calculator_areas a ON p.area_id = a.id
-       WHERE p.is_active = TRUE
-       ORDER BY p.order_index ASC, p.id ASC`
-    );
     for (const p of panels) {
       if (typeof p.features === "string") {
-        try {
-          p.features = JSON.parse(p.features);
-        } catch {
-          p.features = [];
-        }
+        try { p.features = JSON.parse(p.features); } catch { p.features = []; }
       }
     }
 
-    // 7. Fetch active accessories
-    const [accessories]: any = await pool.query(
-      `SELECT acc.*,
-              r.title as inverter_title,
-              r.recommended_inverter_kw,
-              r.recommended_inverter_model,
-              r.min_watt as inverter_min_watt,
-              r.max_watt as inverter_max_watt
-       FROM calculator_accessories acc
-       LEFT JOIN calculator_recommendations r ON acc.inverter_id = r.id
-       WHERE acc.is_active = TRUE
-       ORDER BY acc.order_index ASC, acc.id ASC`
-    );
     for (const a of accessories) {
       if (typeof a.items === "string") {
-        try {
-          a.items = JSON.parse(a.items);
-        } catch {
-          a.items = [];
-        }
+        try { a.items = JSON.parse(a.items); } catch { a.items = []; }
       }
     }
 
-    // 8. Fetch active packages
-    const [packages]: any = await pool.query(
-      `SELECT pkg.*,
-              r.title as inverter_title, r.recommended_inverter_kw, r.recommended_inverter_model,
-              p.name as panel_name, p.wattage as panel_wattage, p.model as panel_model,
-              b.name as battery_name, b.model as battery_model,
-              acc.name as accessory_name
-       FROM calculator_packages pkg
-       LEFT JOIN calculator_recommendations r ON pkg.inverter_id = r.id
-       LEFT JOIN calculator_panels p ON pkg.panel_id = p.id
-       LEFT JOIN calculator_battery_types b ON pkg.battery_type_id = b.id
-       LEFT JOIN calculator_accessories acc ON pkg.accessory_id = acc.id
-       WHERE pkg.is_active = TRUE
-       ORDER BY pkg.order_index ASC, pkg.id ASC`
-    );
     for (const pkg of packages) {
       if (typeof pkg.features === "string") {
-        try {
-          pkg.features = JSON.parse(pkg.features);
-        } catch {
-          pkg.features = [];
-        }
+        try { pkg.features = JSON.parse(pkg.features); } catch { pkg.features = []; }
       }
     }
 
-    // 9. Fetch calculator settings (Current Grid Electricity Tariff, USD rate, Offset %)
-    const [settingsRows]: any = await pool.query("SELECT * FROM calculator_settings WHERE id = 1");
     const settings = settingsRows && settingsRows[0] ? settingsRows[0] : {
       grid_tariff_bdt: 10.50,
       grid_tariff_usd: 0.16,
       solar_offset_percent: 95.00
     };
 
+    const responsePayload = {
+      appliances,
+      solarTypes,
+      batteryTypes,
+      recommendations: enrichedRecommendations,
+      areas,
+      panels,
+      accessories,
+      packages,
+      settings,
+    };
+
+    // Cache in memory for 10 minutes
+    cachedPublicCalculatorData = responsePayload;
+    publicCalculatorCacheExpiry = Date.now() + PUBLIC_CALCULATOR_CACHE_TTL_MS;
+
+    res.setHeader("Cache-Control", "public, max-age=120, s-maxage=300, stale-while-revalidate=600");
     res.json({
       success: true,
-      data: {
-        appliances,
-        solarTypes,
-        batteryTypes,
-        recommendations: enrichedRecommendations,
-        areas,
-        panels,
-        accessories,
-        packages,
-        settings,
-      },
+      data: responsePayload,
     });
   } catch (error: any) {
     console.error("getPublicCalculatorData error:", error);
@@ -1038,7 +1047,8 @@ export const createAppliance = async (req: AuthenticatedRequest, res: Response):
     } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ success: false, message: "Appliance name is required." });
+      invalidateCalculatorCache();
+    res.status(400).json({ success: false, message: "Appliance name is required." });
       return;
     }
 
@@ -1135,6 +1145,7 @@ export const updateAppliance = async (req: AuthenticatedRequest, res: Response):
       [id]
     );
 
+    invalidateCalculatorCache();
     res.json({ success: true, data: updated[0] });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -1146,6 +1157,7 @@ export const deleteAppliance = async (req: AuthenticatedRequest, res: Response):
     await ensureCalculatorTables();
     const { id } = req.params;
     await pool.query("DELETE FROM calculator_appliances WHERE id = ?", [id]);
+    invalidateCalculatorCache();
     res.json({ success: true, message: "Appliance deleted successfully." });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -1208,7 +1220,8 @@ export const createSolarType = async (req: AuthenticatedRequest, res: Response):
     } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ success: false, message: "Solar system name is required." });
+      invalidateCalculatorCache();
+    res.status(400).json({ success: false, message: "Solar system name is required." });
       return;
     }
 
@@ -1298,7 +1311,8 @@ export const updateSolarType = async (req: AuthenticatedRequest, res: Response):
 
     const [existingRows]: any = await pool.query("SELECT * FROM calculator_solar_types WHERE id = ?", [id]);
     if (!existingRows || existingRows.length === 0) {
-      res.status(404).json({ success: false, message: "Solar type not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Solar type not found." });
       return;
     }
     const existing = existingRows[0];
@@ -1388,6 +1402,7 @@ export const deleteSolarType = async (req: AuthenticatedRequest, res: Response):
     await ensureCalculatorTables();
     const { id } = req.params;
     await pool.query("DELETE FROM calculator_solar_types WHERE id = ?", [id]);
+    invalidateCalculatorCache();
     res.json({ success: true, message: "Solar type deleted successfully." });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -1450,7 +1465,8 @@ export const createBatteryType = async (req: AuthenticatedRequest, res: Response
     } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ success: false, message: "Battery type name is required." });
+      invalidateCalculatorCache();
+    res.status(400).json({ success: false, message: "Battery type name is required." });
       return;
     }
 
@@ -1539,7 +1555,8 @@ export const updateBatteryType = async (req: AuthenticatedRequest, res: Response
 
     const [existingRows]: any = await pool.query("SELECT * FROM calculator_battery_types WHERE id = ?", [id]);
     if (!existingRows || existingRows.length === 0) {
-      res.status(404).json({ success: false, message: "Battery type not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Battery type not found." });
       return;
     }
     const existing = existingRows[0];
@@ -1628,6 +1645,7 @@ export const deleteBatteryType = async (req: AuthenticatedRequest, res: Response
     await ensureCalculatorTables();
     const { id } = req.params;
     await pool.query("DELETE FROM calculator_battery_types WHERE id = ?", [id]);
+    invalidateCalculatorCache();
     res.json({ success: true, message: "Battery type deleted successfully." });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -1682,7 +1700,8 @@ export const createRecommendation = async (req: AuthenticatedRequest, res: Respo
     } = req.body;
 
     if (!title || !String(title).trim()) {
-      res.status(400).json({ success: false, message: "Inverter name is required." });
+      invalidateCalculatorCache();
+    res.status(400).json({ success: false, message: "Inverter name is required." });
       return;
     }
     if (min_watt === undefined || max_watt === undefined || min_watt === null || max_watt === null) {
@@ -1766,7 +1785,8 @@ export const updateRecommendation = async (req: AuthenticatedRequest, res: Respo
 
     const [existingRows]: any = await pool.query("SELECT * FROM calculator_recommendations WHERE id = ?", [id]);
     if (!existingRows || existingRows.length === 0) {
-      res.status(404).json({ success: false, message: "Inverter configuration not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Inverter configuration not found." });
       return;
     }
     const existing = existingRows[0];
@@ -1884,7 +1904,8 @@ export const deleteRecommendation = async (req: AuthenticatedRequest, res: Respo
     const { id } = req.params;
     const [existing]: any = await pool.query("SELECT id FROM calculator_recommendations WHERE id = ?", [id]);
     if (!existing || existing.length === 0) {
-      res.status(404).json({ success: false, message: "Inverter not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Inverter not found." });
       return;
     }
     await pool.query("DELETE FROM calculator_recommendations WHERE id = ?", [id]);
@@ -1932,7 +1953,8 @@ export const createArea = async (req: AuthenticatedRequest, res: Response): Prom
     } = req.body;
 
     if (!name || !String(name).trim()) {
-      res.status(400).json({ success: false, message: "Area name is required." });
+      invalidateCalculatorCache();
+    res.status(400).json({ success: false, message: "Area name is required." });
       return;
     }
 
@@ -2004,7 +2026,8 @@ export const updateArea = async (req: AuthenticatedRequest, res: Response): Prom
 
     const [existingRows]: any = await pool.query("SELECT * FROM calculator_areas WHERE id = ?", [id]);
     if (!existingRows || existingRows.length === 0) {
-      res.status(404).json({ success: false, message: "Installation area not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Installation area not found." });
       return;
     }
     const existing = existingRows[0];
@@ -2078,7 +2101,8 @@ export const deleteArea = async (req: AuthenticatedRequest, res: Response): Prom
     const { id } = req.params;
     const [existing]: any = await pool.query("SELECT id FROM calculator_areas WHERE id = ?", [id]);
     if (!existing || existing.length === 0) {
-      res.status(404).json({ success: false, message: "Installation area not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Installation area not found." });
       return;
     }
     await pool.query("DELETE FROM calculator_areas WHERE id = ?", [id]);
@@ -2141,7 +2165,8 @@ export const createPanel = async (req: AuthenticatedRequest, res: Response): Pro
     } = req.body;
 
     if (!name || !String(name).trim()) {
-      res.status(400).json({ success: false, message: "Solar Panel name is required." });
+      invalidateCalculatorCache();
+    res.status(400).json({ success: false, message: "Solar Panel name is required." });
       return;
     }
 
@@ -2246,7 +2271,8 @@ export const updatePanel = async (req: AuthenticatedRequest, res: Response): Pro
 
     const [existingRows]: any = await pool.query("SELECT * FROM calculator_panels WHERE id = ?", [id]);
     if (!existingRows || existingRows.length === 0) {
-      res.status(404).json({ success: false, message: "Solar Panel not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Solar Panel not found." });
       return;
     }
     const existing = existingRows[0];
@@ -2353,7 +2379,8 @@ export const deletePanel = async (req: AuthenticatedRequest, res: Response): Pro
     const { id } = req.params;
     const [existing]: any = await pool.query("SELECT id FROM calculator_panels WHERE id = ?", [id]);
     if (!existing || existing.length === 0) {
-      res.status(404).json({ success: false, message: "Solar Panel not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Solar Panel not found." });
       return;
     }
     await pool.query("DELETE FROM calculator_panels WHERE id = ?", [id]);
@@ -2404,7 +2431,8 @@ export const createAccessory = async (req: AuthenticatedRequest, res: Response):
     } = req.body;
 
     if (!name || !String(name).trim()) {
-      res.status(400).json({ success: false, message: "Accessory package name is required." });
+      invalidateCalculatorCache();
+    res.status(400).json({ success: false, message: "Accessory package name is required." });
       return;
     }
 
@@ -2475,7 +2503,8 @@ export const updateAccessory = async (req: AuthenticatedRequest, res: Response):
 
     const [existingRows]: any = await pool.query("SELECT * FROM calculator_accessories WHERE id = ?", [id]);
     if (!existingRows || existingRows.length === 0) {
-      res.status(404).json({ success: false, message: "Accessory package not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Accessory package not found." });
       return;
     }
     const existing = existingRows[0];
@@ -2548,7 +2577,8 @@ export const deleteAccessory = async (req: AuthenticatedRequest, res: Response):
     const { id } = req.params;
     const [existing]: any = await pool.query("SELECT id FROM calculator_accessories WHERE id = ?", [id]);
     if (!existing || existing.length === 0) {
-      res.status(404).json({ success: false, message: "Accessory package not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Accessory package not found." });
       return;
     }
     await pool.query("DELETE FROM calculator_accessories WHERE id = ?", [id]);
@@ -2622,7 +2652,8 @@ export const createPackage = async (req: AuthenticatedRequest, res: Response): P
     } = req.body;
 
     if (!name || !String(name).trim()) {
-      res.status(400).json({ success: false, message: "Package name is required." });
+      invalidateCalculatorCache();
+    res.status(400).json({ success: false, message: "Package name is required." });
       return;
     }
 
@@ -2769,7 +2800,8 @@ export const updatePackage = async (req: AuthenticatedRequest, res: Response): P
 
     const [existingRows]: any = await pool.query("SELECT * FROM calculator_packages WHERE id = ?", [id]);
     if (!existingRows || existingRows.length === 0) {
-      res.status(404).json({ success: false, message: "Package not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Package not found." });
       return;
     }
     const existing = existingRows[0];
@@ -2918,7 +2950,8 @@ export const deletePackage = async (req: AuthenticatedRequest, res: Response): P
     const { id } = req.params;
     const [existing]: any = await pool.query("SELECT id FROM calculator_packages WHERE id = ?", [id]);
     if (!existing || existing.length === 0) {
-      res.status(404).json({ success: false, message: "Package not found." });
+      invalidateCalculatorCache();
+    res.status(404).json({ success: false, message: "Package not found." });
       return;
     }
     await pool.query("DELETE FROM calculator_packages WHERE id = ?", [id]);
@@ -3089,6 +3122,7 @@ export const updateCalculatorSettings = async (req: AuthenticatedRequest, res: R
     );
 
     const [rows]: any = await pool.query("SELECT * FROM calculator_settings WHERE id = 1");
+    invalidateCalculatorCache();
     res.json({ success: true, data: rows[0], message: "Calculator settings updated successfully." });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
