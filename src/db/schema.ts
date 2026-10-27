@@ -5,9 +5,10 @@ export const users = mysqlTable("users", {
   name: varchar("name", { length: 191 }).notNull(),
   email: varchar("email", { length: 191 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
-  role: mysqlEnum("role", ["admin", "editor", "viewer"]).default("admin").notNull(),
+  role: varchar("role", { length: 50 }).default("editor").notNull(),
   avatar: varchar("avatar", { length: 500 }),
   status: mysqlEnum("status", ["active", "inactive", "suspended"]).default("active").notNull(),
+  permissions: json("permissions").$type<Record<string, { view?: boolean; create?: boolean; edit?: boolean; delete?: boolean }>>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

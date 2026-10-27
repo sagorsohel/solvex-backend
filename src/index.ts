@@ -39,6 +39,7 @@ import { ensureTestimonialsTable } from "./controllers/testimonials.controller.j
 import { ensureAboutPageColumns } from "./controllers/about.controller.js";
 import { ensurePageHeadersTable } from "./controllers/page-header.controller.js";
 import { ensureCalculatorTables } from "./controllers/calculator.controller.js";
+import { ensureUsersColumns } from "./controllers/user.controller.js";
 import path from "path";
 
 dotenv.config();
@@ -141,6 +142,7 @@ const server = app.listen(PORT, async () => {
   console.log(`📦 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`📁 Uploads Storage Directory: ${uploadsDir}`);
   await testDbConnection();
+  await ensureUsersColumns();
   await ensureProductsColumns();
   await ensureBlogTable();
   await ensureSiteSettingsTable();

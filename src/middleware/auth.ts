@@ -1,11 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
+export type PermissionAction = "view" | "create" | "edit" | "delete";
+
 export interface AuthUserPayload {
   id: number;
   email: string;
-  role: "admin" | "editor" | "viewer";
+  role: "super_admin" | "admin" | "editor" | "viewer" | string;
   name: string;
+  permissions?: Record<string, { view?: boolean; create?: boolean; edit?: boolean; delete?: boolean }> | null;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -43,10 +46,16 @@ export const verifyToken = (
   }
 };
 
-export const requireRole = (allowedRoles: Array<"admin" | "editor" | "viewer">) => {
+export const requireRole = (allowedRoles: Array<string>) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ success: false, message: "Authentication required." });
+      return;
+    }
+
+    // Super Admin has unrestricted authority and bypasses all role restrictions
+    if (req.user.role === "super_admin") {
+      next();
       return;
     }
 
@@ -59,5 +68,44 @@ export const requireRole = (allowedRoles: Array<"admin" | "editor" | "viewer">) 
     }
 
     next();
+  };
+};
+
+/**
+ * Granular module-level permission middleware
+ * Allows super_admin automatically, or validates user's specific permissions.
+ */
+export const requirePermission = (moduleName: string, action: PermissionAction) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: "Authentication required." });
+      return;
+    }
+
+    // Super Admin has full unrestricted access
+    if (req.user.role === "super_admin") {
+      next();
+      return;
+    }
+
+    const perms = req.user.permissions;
+    if (perms && typeof perms === "object") {
+      const modPerm = perms[moduleName];
+      if (modPerm && typeof modPerm === "object" && modPerm[action] === true) {
+        next();
+        return;
+      }
+    }
+
+    // Legacy fallback: if user role is "admin" with no granular permissions configured
+    if (req.user.role === "admin" && (!perms || Object.keys(perms).length === 0)) {
+      next();
+      return;
+    }
+
+    res.status(403).json({
+      success: false,
+      message: `Forbidden: You do not have permission to ${action} ${moduleName.replace("_", " ")}.`,
+    });
   };
 };
